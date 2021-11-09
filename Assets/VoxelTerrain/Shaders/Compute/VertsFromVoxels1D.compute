@@ -1,0 +1,129 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+struct Voxel {
+	int x;
+	int y;
+	int height;
+};
+
+// Chunk data
+float voxelSize;
+int chunkWidth;
+
+RWStructuredBuffer<Voxel> voxels;
+RWStructuredBuffer<Voxel> leftEdgeVoxels;
+RWStructuredBuffer<Voxel> bottomEdgeVoxels;
+
+// Mesh data
+RWStructuredBuffer<float3> verts;
+RWStructuredBuffer<int> tris;
+
+float3 VoxelPosToF3(uint vid, bool left, bool bottom) {
+	if (left == false && bottom == false) {
+		return float3(float(voxels[vid].x), float(voxels[vid].height), float(voxels[vid].y));
+	}
+	else if (left == true) {
+		return float3(float(leftEdgeVoxels[vid].x), float(leftEdgeVoxels[vid].height), float(leftEdgeVoxels[vid].y));
+	}
+	else if (bottom == true) {
+		return float3(float(bottomEdgeVoxels[vid].x), float(bottomEdgeVoxels[vid].height), float(bottomEdgeVoxels[vid].y));
+	}
+	else {
+		return float3(0, 0, 0);
+	}
+}
+
+void SetVerts(uint id) {
+	uint vid = id;
+	uint vertStart = vid * 12;
+
+    float3 v0 = VoxelPosToF3(vid, false, false) + (float3(0, 0, 0)) * voxelSize;
+	float3 v1 = VoxelPosToF3(vid, false, false) + (float3(0, 0, 1) ) * voxelSize ;
+	float3 v2 = VoxelPosToF3(vid, false, false) + (float3(1, 0, 1) ) * voxelSize ;
+	float3 v3 = VoxelPosToF3(vid, false, false) + (float3(1, 0, 0) ) * voxelSize ;
+	float3 v4;
+	if (id.y == 0) {
+        v4 = float3(voxels[vid].x, float(bottomEdgeVoxels[id.x].height), voxels[vid].y) + (float3(0, 0, 0)) * voxelSize;
+    }
+	else {
+        v4 = float3(voxels[vid].x, float(voxels[vid - chunkWidth].height), voxels[vid].y) + (float3(0, 0, 0)) * voxelSize;
+    }
+
+	float3 v7;
+	if (id.y == 0) {
+        v7 = float3(voxels[vid].x, float(bottomEdgeVoxels[id.x].height), voxels[vid].y) + (float3(1, 0, 0)) * voxelSize;
+    }
+	else {
+        v7 = float3(voxels[vid].x, float(voxels[vid - chunkWidth].height), voxels[vid].y) + (float3(1, 0, 0)) * voxelSize;
+    }
+
+	float3 v8;
+	if (id.x == 0) {
+        v8 = float3(voxels[vid].x, float(leftEdgeVoxels[id.y].height), voxels[vid].y) + (float3(0, 0, 0)) * voxelSize;
+    }
+	else {
+        v8 = float3(voxels[vid].x, float(voxels[vid - 1].height), voxels[vid].y) + (float3(0, 0, 0)) * voxelSize;
+    }
+
+	float3 v9;
+	if (id.x == 0) {
+        v9 = float3(voxels[vid].x, float(leftEdgeVoxels[id.y].height), voxels[vid].y) + (float3(0, 0, 1)) * voxelSize;
+    }
+	else {
+        v9 = float3(voxels[vid].x, float(voxels[vid - 1].height), voxels[vid].y) + (float3(0, 0, 1)) * voxelSize;
+    }
+
+	// Vert order
+	// v0, v1, v2, v3, v4, v0, v3, v7, v4, v9, v1, v0
+	
+	verts[vertStart] = v0;
+	verts[vertStart + 1] = v1;
+	verts[vertStart + 2] = v2;
+	verts[vertStart + 3] = v3;
+	verts[vertStart + 4] = v4;
+	verts[vertStart + 5] = v0;
+	verts[vertStart + 6] = v3;
+	verts[vertStart + 7] = v7;
+	verts[vertStart + 8] = v8;
+	verts[vertStart + 9] = v9;
+	verts[vertStart + 10] = v1;
+	verts[vertStart + 11] = v0;
+}
+
+void SetTris(uint vertStart, uint triStart) {
+	tris[triStart] = vertStart;
+	tris[triStart + 1] = vertStart + 1;
+	tris[triStart + 2] = vertStart + 2;
+
+	tris[triStart + 3] = vertStart;
+	tris[triStart + 4] = vertStart + 2;
+	tris[triStart + 5] = vertStart + 3;
+
+	tris[triStart + 6] = vertStart + 4;
+	tris[triStart + 7] = vertStart + 5;
+	tris[triStart + 8] = vertStart + 7;
+
+	tris[triStart + 9] = vertStart + 5;
+	tris[triStart + 10] = vertStart + 6;
+	tris[triStart + 11] = vertStart + 7;
+
+	tris[triStart + 12] = vertStart + 8;
+	tris[triStart + 13] = vertStart + 9;
+	tris[triStart + 14] = vertStart + 10;
+
+	tris[triStart + 15] = vertStart + 8;
+	tris[triStart + 16] = vertStart + 10;
+	tris[triStart + 17] = vertStart + 11;
+}
+
+[numthreads(64,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+	uint vid = id.x;
+	uint vertStart = vid * 12;
+	uint triStart = vid * 18;
+
+	SetVerts(id.x);
+	SetTris(vertStart, triStart);
+}
