@@ -12,8 +12,9 @@ namespace VoxelTerrain
 {
     public class TerrainManager : MonoBehaviour
     {
-        [HideInInspector] public Grid grid;
+        public static TerrainManager instance;
 
+        [HideInInspector] public Grid grid;
 
         [Min(1)] public int seed = 0;
         [Range(0.001f, 2f)] public float voxelSize = 1;
@@ -25,6 +26,7 @@ namespace VoxelTerrain
         [Range(0,1)] public float heightNormalIntensity;
 
         [Range(1, 50)] public int generationStartSize = 5;
+        public List<float> lodRanges;
 
         public UnityEvent OnStartGeneration;
 
@@ -52,7 +54,10 @@ namespace VoxelTerrain
 
         private void Awake()
         {
-            
+            if (instance) {
+                Destroy(instance.gameObject);
+            }
+            instance = this;
         }
 
         // Start is called before the first frame update
@@ -72,26 +77,12 @@ namespace VoxelTerrain
         }
 
         public void Generate() {
-            if (Application.isEditor)
-                _generator = new PerlinTerrainGenerator(
-                        minTerrainHeight,
-                        maxTerrainHeight,
-                        seed,
-                        chunkWidth,
-                        generatorNoiseScale,
-                        heightNormalNoiseScale,
-                        heightNormalIntensity
-                    );
-
             if (chunkObjects != null) {
                 if (chunkObjects.Count != 0) {
                     foreach (var chunkObject in chunkObjects) {
                         try
                         {
-                            if (Application.isEditor)
-                                DestroyImmediate(chunkObject.Value.gameObject);
-                            else
-                                Destroy(chunkObject.Value.gameObject);
+                            Destroy(chunkObject.Value.gameObject);
                         }
                         catch {
                             Debug.LogWarning("Could not delete the chunk.");
@@ -114,10 +105,7 @@ namespace VoxelTerrain
                 }
             }
 
-            if (!Application.isEditor)
-                OnStartGeneration.Invoke();
-            else
-                generator.ResolveJobs(UpdateChunkObject);
+            OnStartGeneration.Invoke();
         }
 
         public void InitializeChunk(Vector2Int gridPosition) {
@@ -146,16 +134,15 @@ namespace VoxelTerrain
             }
         }
 
-        private void UpdateChunkObject(int2 gridPosition, Voxel[] chunkData, Voxel[] leftEdgeData, Voxel[] bottomEdgeData, int lodIndex) {
+        private void UpdateChunkObject(int2 gridPosition, Voxel[] chunkData, int lodIndex) {
             Chunk chunk = chunkObjects[new Vector2Int(gridPosition.x, gridPosition.y)].chunk;
 
             ChunkLod lod = new ChunkLod()
             {
                 voxels = chunkData,
-                leftEdge = leftEdgeData,
-                bottomEdge = bottomEdgeData,
-                width = leftEdgeData.Length
+                width = (int) Mathf.Sqrt(chunkData.Length)
             };
+
             chunk.SetChunkLod(lodIndex, lod);
 
             chunkObjects[new Vector2Int(gridPosition.x, gridPosition.y)].SetChunk(chunk);
@@ -165,6 +152,7 @@ namespace VoxelTerrain
             Vector2Int gridPosition = new Vector2Int(chunk.gridPosition.x, chunk.gridPosition.y);
             if (!chunkObjects.ContainsKey(gridPosition)) {
                 GameObject chunkObject = Instantiate<GameObject>(Resources.Load<GameObject>("VoxelTerrain/Chunk"), transform);
+                chunkObject.name = $"Chunk ( {chunk.gridPosition.x}, {chunk.gridPosition.y} )";
 
                 TerrainChunk chunkScript = chunkObject.GetComponent<TerrainChunk>();
                 chunkScript.SetChunk(chunk, false);

@@ -14,6 +14,9 @@ namespace VoxelTerrain {
         public int lodIndex = 0;
         public ComputeShader meshGenerator;
 
+        [HideInInspector]
+        public bool visible = false;
+
         private Mesh mesh {
             get {
                 if (!_mesh) {
@@ -33,14 +36,8 @@ namespace VoxelTerrain {
             }
         }
         private MeshRenderer meshRend;
-        new private BoxCollider collider {
-            get {
-                if (!_collider) {
-                    _collider = GetComponent<BoxCollider>();
-                }
-                return _collider;
-            }
-        }
+        public Bounds bounds;
+        private Camera gameCamera;
 
         public Vector3[] verts;
         public int[] tris;
@@ -52,13 +49,50 @@ namespace VoxelTerrain {
 
         public void Awake()
         {
+            gameCamera = GameObject.FindGameObjectWithTag("MainCamera").GetComponent<Camera>();
             meshRend = GetComponent<MeshRenderer>();
             
             meshFilter.sharedMesh = mesh;
             meshCollider = GetComponent<MeshCollider>();
         }
 
+        public void Update()
+        {
+            SetVisible();
+            DetectLod();
+        }
+
+        private void SetVisible() {
+            Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(gameCamera);
+
+            visible = GeometryUtility.TestPlanesAABB(frustumPlanes, bounds);
+            meshRend.enabled = visible;
+        }
+
+        private void DetectLod() {
+            if (!gameCamera) {
+                Debug.Log("Could not find camera");
+                ChangeLod(TerrainManager.instance.lodRanges.Count - 1);
+                return;
+            }
+
+            float camDist = Vector3.Distance(transform.position, gameCamera.transform.position);
+
+            int i = 0;
+            foreach (float lodRange in TerrainManager.instance.lodRanges) {
+                if (camDist < lodRange) {
+                    ChangeLod(i);
+                    return;
+                }
+                i++;
+            }
+
+            ChangeLod(TerrainManager.instance.lodRanges.Count - 1);
+        }
+
         public void ChangeLod(int lodIndex) {
+            if (this.lodIndex == lodIndex) { return; }
+
             this.lodIndex = lodIndex;
 
             UpdateChunkMesh();
@@ -67,12 +101,9 @@ namespace VoxelTerrain {
         public void SetChunk(Chunk chunk, bool reRender = true) {
             this.chunk = chunk;
 
-            mesh.name = $"chunk ( {chunk.gridPosition.x}, {chunk.gridPosition.y} )";
             meshFilter.sharedMesh = mesh;
 
             transform.position = new Vector3(chunk.gridPosition.x, 0f, chunk.gridPosition.y) * (chunk.grid.voxelSize * chunk.chunkWidth);
-            collider.center = new Vector3((chunk.grid.voxelSize * chunk.chunkWidth), 0f, (chunk.grid.voxelSize * chunk.chunkWidth));
-            collider.size = new Vector3((chunk.grid.voxelSize * chunk.chunkWidth), 0f, (chunk.grid.voxelSize * chunk.chunkWidth));
 
             if (meshCollider != null) {
                 meshCollider.sharedMesh = mesh;
@@ -96,10 +127,6 @@ namespace VoxelTerrain {
             currentLod = chunk.lods[lodIndex];
 
             float voxelWidth = (chunk.grid.voxelSize * (chunk.chunkWidth / chunk.lods[lodIndex].width));
-            //float voxelWidth = (chunk.grid.voxelSize / 2) * lodIndex + 1;
-
-            Debug.Log($"Voxel width for lod {lodIndex}: {voxelWidth}", this);
-            Debug.Log($"Voxels in lod {lodIndex}: {chunk.lods[lodIndex].voxels.Length}", this);
 
             Vector3[] verts = new Vector3[(chunk.lods[lodIndex].voxels.Length * 12) + (chunk.lods[lodIndex].width * 8)];
             int[] tris = new int[(chunk.lods[lodIndex].voxels.Length * 18) + (chunk.lods[lodIndex].width * 12)];
@@ -128,7 +155,6 @@ namespace VoxelTerrain {
             // Read back data
             vertsBuffer.GetData(verts);
             trisBuffer.GetData(tris);
-            Debug.Log($"Verts: {verts.Length} tris: {tris.Length}");
             
 
             // Use Data
@@ -138,7 +164,7 @@ namespace VoxelTerrain {
             mesh.triangles = tris;
             mesh.RecalculateNormals();
 
-            
+            bounds = new Bounds(transform.position + (mesh.bounds.max / 2), (mesh.bounds.max - mesh.bounds.min));
 
             // Dispose all buffers
             chunkVoxelBuffer.Dispose();
@@ -148,6 +174,9 @@ namespace VoxelTerrain {
 
         private void OnDrawGizmosSelected()
         {
+            Gizmos.color = Color.green;
+            Gizmos.DrawWireCube(bounds.center, bounds.size);
+
             /*
             Gizmos.color = Color.blue;
             if (mesh) {
@@ -155,7 +184,38 @@ namespace VoxelTerrain {
                     Gizmos.DrawSphere(transform.position + vert, 0.1f);
                 }
             }*/
-            
+
+        }
+
+        void DrawBounds(Bounds b, float delay = 0)
+        {
+            // bottom
+            var p1 = new Vector3(b.min.x, b.min.y, b.min.z);
+            var p2 = new Vector3(b.max.x, b.min.y, b.min.z);
+            var p3 = new Vector3(b.max.x, b.min.y, b.max.z);
+            var p4 = new Vector3(b.min.x, b.min.y, b.max.z);
+
+            Debug.DrawLine(p1, p2, Color.blue, delay);
+            Debug.DrawLine(p2, p3, Color.red, delay);
+            Debug.DrawLine(p3, p4, Color.yellow, delay);
+            Debug.DrawLine(p4, p1, Color.magenta, delay);
+
+            // top
+            var p5 = new Vector3(b.min.x, b.max.y, b.min.z);
+            var p6 = new Vector3(b.max.x, b.max.y, b.min.z);
+            var p7 = new Vector3(b.max.x, b.max.y, b.max.z);
+            var p8 = new Vector3(b.min.x, b.max.y, b.max.z);
+
+            Debug.DrawLine(p5, p6, Color.blue, delay);
+            Debug.DrawLine(p6, p7, Color.red, delay);
+            Debug.DrawLine(p7, p8, Color.yellow, delay);
+            Debug.DrawLine(p8, p5, Color.magenta, delay);
+
+            // sides
+            Debug.DrawLine(p1, p5, Color.white, delay);
+            Debug.DrawLine(p2, p6, Color.gray, delay);
+            Debug.DrawLine(p3, p7, Color.green, delay);
+            Debug.DrawLine(p4, p8, Color.cyan, delay);
         }
     }
 }
