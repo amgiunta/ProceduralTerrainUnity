@@ -12,66 +12,53 @@ float voxelSize;
 int chunkWidth;
 
 RWStructuredBuffer<Voxel> voxels;
-RWStructuredBuffer<Voxel> leftEdgeVoxels;
-RWStructuredBuffer<Voxel> bottomEdgeVoxels;
 
 // Mesh data
 RWStructuredBuffer<float3> verts;
 RWStructuredBuffer<int> tris;
 
-float3 VoxelPosToF3(uint vid, bool left, bool bottom) {
-	if (left == false && bottom == false) {
-		return float3(float(voxels[vid].x), float(voxels[vid].height), float(voxels[vid].y));
-	}
-	else if (left == true) {
-		return float3(float(leftEdgeVoxels[vid].x), float(leftEdgeVoxels[vid].height), float(leftEdgeVoxels[vid].y));
-	}
-	else if (bottom == true) {
-		return float3(float(bottomEdgeVoxels[vid].x), float(bottomEdgeVoxels[vid].height), float(bottomEdgeVoxels[vid].y));
-	}
-	else {
-		return float3(0, 0, 0);
-	}
-}
-
-void SetVerts(uint3 id) {
+void SetVoxelVerts(uint3 id, uint vertStart) {
 	uint vid = id.x + (id.y * chunkWidth);
-	uint vertStart = vid * 12;
 
-    float3 v0 = VoxelPosToF3(vid, false, false) * voxelSize;
-	float3 v1 = (VoxelPosToF3(vid, false, false) + float3(0, 0, 1)) * voxelSize ;
-	float3 v2 = (VoxelPosToF3(vid, false, false) + float3(1, 0, 1)) * voxelSize ;
-	float3 v3 = (VoxelPosToF3(vid, false, false) + float3(1, 0, 0)) * voxelSize ;
+    //float3 v0 = VoxelPosToF3(vid, false, false) * voxelSize;
+    float3 v0 = float3(float(voxels[vid].x) * voxelSize, voxels[vid].height, float(voxels[vid].y) * voxelSize);
+	//float3 v1 = (VoxelPosToF3(vid, false, false) + float3(0, 0, 1)) * voxelSize;
+    float3 v1 = float3(float(voxels[vid].x) * voxelSize, voxels[vid].height, (float(voxels[vid].y) + 1) * voxelSize);
+	//float3 v2 = (VoxelPosToF3(vid, false, false) + float3(1, 0, 1)) * voxelSize;
+    float3 v2 = float3((float(voxels[vid].x) + 1) * voxelSize, voxels[vid].height, (float(voxels[vid].y) + 1) * voxelSize);
+	//float3 v3 = (VoxelPosToF3(vid, false, false) + float3(1, 0, 0)) * voxelSize;
+    float3 v3 = float3((float(voxels[vid].x) + 1) * voxelSize, voxels[vid].height, float(voxels[vid].y) * voxelSize);
 	float3 v4;
 	if (id.y == 0) {
-        v4 = float3(voxels[vid].x, float(bottomEdgeVoxels[id.x].height), voxels[vid].y) * voxelSize;
+        v4 = float3(float(voxels[vid].x) * voxelSize, -10, float(voxels[vid].y) * voxelSize);
     }
-	else {
-        v4 = float3(voxels[vid].x, float(voxels[vid - chunkWidth].height), voxels[vid].y) * voxelSize;
+    else
+    {
+        v4 = float3(float(voxels[vid].x) * voxelSize, float(voxels[vid - chunkWidth].height), float(voxels[vid].y) * voxelSize);
     }
 
 	float3 v7;
 	if (id.y == 0) {
-        v7 = (float3(voxels[vid].x, float(bottomEdgeVoxels[id.x].height), voxels[vid].y) + float3(1, 0, 0)) * voxelSize;
+        v7 = float3((voxels[vid].x + 1) * voxelSize, -10, voxels[vid].y * voxelSize);
     }
 	else {
-        v7 = (float3(voxels[vid].x, float(voxels[vid - chunkWidth].height), voxels[vid].y) + float3(1, 0, 0)) * voxelSize;
+        v7 = float3((voxels[vid].x + 1) * voxelSize, float(voxels[vid - chunkWidth].height), voxels[vid].y * voxelSize);
     }
 
 	float3 v8;
 	if (id.x == 0) {
-        v8 = float3(voxels[vid].x, float(leftEdgeVoxels[id.y].height), voxels[vid].y) * voxelSize;
+        v8 = float3(voxels[vid].x * voxelSize, -10, voxels[vid].y * voxelSize);
     }
 	else {
-        v8 = float3(voxels[vid].x, float(voxels[vid - 1].height), voxels[vid].y) * voxelSize;
+        v8 = float3(voxels[vid].x * voxelSize, float(voxels[vid - 1].height), voxels[vid].y * voxelSize);
     }
 
 	float3 v9;
 	if (id.x == 0) {
-        v9 = (float3(voxels[vid].x, float(leftEdgeVoxels[id.y].height), voxels[vid].y) + float3(0, 0, 1)) * voxelSize;
+        v9 = float3(voxels[vid].x * voxelSize, -10, (voxels[vid].y + 1) * voxelSize);
     }
 	else {
-        v9 = (float3(voxels[vid].x, float(voxels[vid - 1].height), voxels[vid].y) + float3(0, 0, 1)) * voxelSize;
+        v9 = float3(voxels[vid].x * voxelSize, float(voxels[vid - 1].height), (voxels[vid].y + 1) * voxelSize);
     }
 
 	// Vert order
@@ -89,9 +76,43 @@ void SetVerts(uint3 id) {
 	verts[vertStart + 9] = v9;
 	verts[vertStart + 10] = v1;
 	verts[vertStart + 11] = v0;
+	
+    uint vertEnd = vertStart + 11;
+	
+    if (id.x == chunkWidth - 1)
+    {
+		//v12
+        verts[vertEnd + 1] = float3(float(voxels[vid].x + 1) * voxelSize, -10, voxels[vid].y * voxelSize);
+		
+		//v13
+        verts[vertEnd + 2] = v3;
+		
+		//v14
+        verts[vertEnd + 3] = v2;
+
+		//v15
+        verts[vertEnd + 4] = float3(float(voxels[vid].x + 1) * voxelSize, -10, float(voxels[vid].y + 1) * voxelSize);
+        vertEnd = vertEnd + 4;
+    }
+	
+    if (id.y == chunkWidth - 1)
+    {
+		//v16
+        verts[vertEnd + 1] = float3(float(voxels[vid].x + 1) * voxelSize, -10, float(voxels[vid].y + 1) * voxelSize);
+		
+		//v17
+        verts[vertEnd + 2] = v2;
+		
+		//v18
+        verts[vertEnd + 3] = v1;
+		
+		//v19
+        verts[vertEnd + 4] = float3(voxels[vid].x * voxelSize, -10, float(voxels[vid].y + 1) * voxelSize);
+        vertEnd = vertEnd + 4;
+    }
 }
 
-void SetTris(uint vertStart, uint triStart) {
+void SetTris(uint vertStart, uint triStart, uint3 id) {
 	tris[triStart] = vertStart;
 	tris[triStart + 1] = vertStart + 1;
 	tris[triStart + 2] = vertStart + 2;
@@ -115,15 +136,63 @@ void SetTris(uint vertStart, uint triStart) {
 	tris[triStart + 15] = vertStart + 8;
 	tris[triStart + 16] = vertStart + 10;
 	tris[triStart + 17] = vertStart + 11;
+	
+    uint triEnd = triStart + 17;
+    uint vertEnd = vertStart + 11;
+	
+    if (id.x == chunkWidth - 1)
+    {
+		// {12, 13, 14}
+        tris[triEnd + 1] = vertEnd + 1; // t18, v12
+        tris[triEnd + 2] = vertEnd + 2; // t19, v13
+        tris[triEnd + 3] = vertEnd + 3; // t20, v14
+		
+		// {12, 14, 15}
+        tris[triEnd + 4] = vertEnd + 1; // t21, v12
+        tris[triEnd + 5] = vertEnd + 3; // t22, v14
+        tris[triEnd + 6] = vertEnd + 4; // t23, v15
+		
+        triEnd = triEnd + 6;
+        vertEnd = vertEnd + 4;
+    }
+	
+    if (id.y == chunkWidth - 1)
+    {
+		// {16, 17, 18}
+        tris[triEnd + 1] = vertEnd + 1; // t24, v16
+        tris[triEnd + 2] = vertEnd + 2; // t25, v17
+        tris[triEnd + 3] = vertEnd + 3; // t26, v18
+		
+		// {16, 18, 19}
+        tris[triEnd + 4] = vertEnd + 1; // t27, v16
+        tris[triEnd + 5] = vertEnd + 3; // t28, v18
+        tris[triEnd + 6] = vertEnd + 4; // t29, v19
+		
+        triEnd = triEnd + 6;
+        vertEnd = vertEnd + 4;
+    }
 }
 
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
 	uint vid = id.x + (id.y * chunkWidth);
-	uint vertStart = vid * 12;
-	uint triStart = vid * 18;
+    uint vertStart = vid * 12 + (id.y * 4);
+    uint triStart = vid * 18 + (id.y * 6);
+	 /*
+    if (id.x == 0)
+    {
+        vertStart += 
+        triStart += id.y * 6;
+    }*/
+    
+	if (id.y == chunkWidth - 1)
+    {
+        vertStart += id.x * 4;
+        triStart += id.x * 6;
+    }
+	
 
-	SetVerts(id);
-	SetTris(vertStart, triStart);
+	SetVoxelVerts(id, vertStart);
+	SetTris(vertStart, triStart, id);
 }

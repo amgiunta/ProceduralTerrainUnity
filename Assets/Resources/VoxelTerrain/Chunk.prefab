@@ -51,9 +51,12 @@ MonoBehaviour:
     grid:
       voxelSize: 0
     chunkWidth: 0
+  currentLod:
+    width: 0
     voxels: []
     leftEdge: []
     bottomEdge: []
+  lodIndex: 3
   meshGenerator: {fileID: 7200000, guid: f49e3ea65c77e514da3a766c517d0cf6, type: 3}
   verts: []
   tris: 

@@ -68,7 +68,7 @@ namespace VoxelTerrain
 
         private void LateUpdate()
         {
-            generator?.ResolveJobs(UpdateChunk);
+            generator?.ResolveJobs(UpdateChunkObject);
         }
 
         public void Generate() {
@@ -117,7 +117,7 @@ namespace VoxelTerrain
             if (!Application.isEditor)
                 OnStartGeneration.Invoke();
             else
-                generator.ResolveJobs(UpdateChunk);
+                generator.ResolveJobs(UpdateChunkObject);
         }
 
         public void InitializeChunk(Vector2Int gridPosition) {
@@ -127,13 +127,16 @@ namespace VoxelTerrain
                 chunk.gridPosition.y = gridPosition.y;
                 chunk.grid = grid;
                 chunk.chunkWidth = chunkWidth;
-                chunk.voxels = new Voxel[chunkWidth * chunkWidth];
-                chunk.leftEdge = new Voxel[chunkWidth];
-                chunk.bottomEdge = new Voxel[chunkWidth];
+                int lodWidth = chunkWidth;
+                int lods = 0;
+                while (lodWidth >= 8) {
+                    lods++;
+                    lodWidth /= 2;
+                }
+                chunk.lods = new Dictionary<int, ChunkLod>();
 
                 chunks.Add(gridPosition, chunk);
 
-                float randomNormIndex = UnityEngine.Random.Range(0f, 1f);
                 if (generator == null) {
                     Debug.LogWarning("generator is null");
                 }
@@ -143,12 +146,18 @@ namespace VoxelTerrain
             }
         }
 
-        private void UpdateChunk(int2 gridPosition, Voxel[] chunkData, Voxel[] leftEdgeData, Voxel[] bottomEdgeData) {
-            Chunk chunk = chunks[new Vector2Int(gridPosition.x, gridPosition.y)];
+        private void UpdateChunkObject(int2 gridPosition, Voxel[] chunkData, Voxel[] leftEdgeData, Voxel[] bottomEdgeData, int lodIndex) {
+            Chunk chunk = chunkObjects[new Vector2Int(gridPosition.x, gridPosition.y)].chunk;
 
-            chunk.voxels = chunkData;
-            chunk.leftEdge = leftEdgeData;
-            chunk.bottomEdge = bottomEdgeData;
+            ChunkLod lod = new ChunkLod()
+            {
+                voxels = chunkData,
+                leftEdge = leftEdgeData,
+                bottomEdge = bottomEdgeData,
+                width = leftEdgeData.Length
+            };
+            chunk.SetChunkLod(lodIndex, lod);
+
             chunkObjects[new Vector2Int(gridPosition.x, gridPosition.y)].SetChunk(chunk);
         }
 
@@ -158,7 +167,7 @@ namespace VoxelTerrain
                 GameObject chunkObject = Instantiate<GameObject>(Resources.Load<GameObject>("VoxelTerrain/Chunk"), transform);
 
                 TerrainChunk chunkScript = chunkObject.GetComponent<TerrainChunk>();
-                //chunkScript.SetChunk(chunk);
+                chunkScript.SetChunk(chunk, false);
 
                 chunkObjects.Add(gridPosition, chunkScript);
             }

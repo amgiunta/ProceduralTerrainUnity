@@ -10,6 +10,8 @@ namespace VoxelTerrain {
     public class TerrainChunk : MonoBehaviour
     {
         public Chunk chunk;
+        public ChunkLod currentLod;
+        public int lodIndex = 0;
         public ComputeShader meshGenerator;
 
         private Mesh mesh {
@@ -56,21 +58,28 @@ namespace VoxelTerrain {
             meshCollider = GetComponent<MeshCollider>();
         }
 
-        public void SetChunk(Chunk chunk) {
+        public void ChangeLod(int lodIndex) {
+            this.lodIndex = lodIndex;
+
+            UpdateChunkMesh();
+        }
+
+        public void SetChunk(Chunk chunk, bool reRender = true) {
             this.chunk = chunk;
 
             mesh.name = $"chunk ( {chunk.gridPosition.x}, {chunk.gridPosition.y} )";
             meshFilter.sharedMesh = mesh;
 
-            transform.position = new Vector3(chunk.gridPosition.x, 0f, chunk.gridPosition.y) * (chunk.grid.voxelSize / 2 * chunk.chunkWidth);
-            collider.center = new Vector3((chunk.grid.voxelSize / 2 * chunk.chunkWidth) / 2, 0f, (chunk.grid.voxelSize / 2 * chunk.chunkWidth) / 2);
-            collider.size = new Vector3((chunk.grid.voxelSize / 2 * chunk.chunkWidth), 0f, (chunk.grid.voxelSize / 2 * chunk.chunkWidth));
+            transform.position = new Vector3(chunk.gridPosition.x, 0f, chunk.gridPosition.y) * (chunk.grid.voxelSize * chunk.chunkWidth);
+            collider.center = new Vector3((chunk.grid.voxelSize * chunk.chunkWidth), 0f, (chunk.grid.voxelSize * chunk.chunkWidth));
+            collider.size = new Vector3((chunk.grid.voxelSize * chunk.chunkWidth), 0f, (chunk.grid.voxelSize * chunk.chunkWidth));
 
             if (meshCollider != null) {
                 meshCollider.sharedMesh = mesh;
             }
 
-            UpdateChunkMesh();
+            if (reRender)
+                UpdateChunkMesh();
         }
 
         public void UpdateChunkMesh() {
@@ -78,16 +87,26 @@ namespace VoxelTerrain {
             int sizeVector3 = sizeof(float) * 3;
             int sizeVoxel = sizeof(int) * 3;
 
-            Vector3[] verts = new Vector3[chunk.voxels.Length * 12];
-            int[] tris = new int[chunk.voxels.Length * 18];
+            int lodIndex = this.lodIndex;
+            if (chunk.lods.Count <= lodIndex) {
+                Debug.LogWarning($"Lod index {lodIndex} does not exist. Using lowest lod", this);
+                lodIndex = chunk.lods.Count - 1;
+            }
+
+            currentLod = chunk.lods[lodIndex];
+
+            float voxelWidth = (chunk.grid.voxelSize * (chunk.chunkWidth / chunk.lods[lodIndex].width));
+            //float voxelWidth = (chunk.grid.voxelSize / 2) * lodIndex + 1;
+
+            Debug.Log($"Voxel width for lod {lodIndex}: {voxelWidth}", this);
+            Debug.Log($"Voxels in lod {lodIndex}: {chunk.lods[lodIndex].voxels.Length}", this);
+
+            Vector3[] verts = new Vector3[(chunk.lods[lodIndex].voxels.Length * 12) + (chunk.lods[lodIndex].width * 8)];
+            int[] tris = new int[(chunk.lods[lodIndex].voxels.Length * 18) + (chunk.lods[lodIndex].width * 12)];
 
             // Chunk data buffers
-            ComputeBuffer chunkVoxelBuffer = new ComputeBuffer(chunk.voxels.Length, sizeVoxel);
-            ComputeBuffer leftEdgeVoxelBuffer = new ComputeBuffer(chunk.leftEdge.Length, sizeVoxel);
-            ComputeBuffer bottomEdgeVoxelBuffer = new ComputeBuffer(chunk.bottomEdge.Length, sizeVoxel);
-            chunkVoxelBuffer.SetData(chunk.voxels);
-            leftEdgeVoxelBuffer.SetData(chunk.leftEdge);
-            bottomEdgeVoxelBuffer.SetData(chunk.bottomEdge);
+            ComputeBuffer chunkVoxelBuffer = new ComputeBuffer(chunk.lods[lodIndex].voxels.Length, sizeVoxel);
+            chunkVoxelBuffer.SetData(chunk.lods[lodIndex].voxels);
 
             // Mesh data buffers
             ComputeBuffer vertsBuffer = new ComputeBuffer(verts.Length, sizeVector3);
@@ -95,43 +114,27 @@ namespace VoxelTerrain {
             vertsBuffer.SetData(verts);
             trisBuffer.SetData(tris);
 
-            meshGenerator.SetFloat("voxelSize", chunk.grid.voxelSize / 2 );
-            meshGenerator.SetInt("chunkWidth", chunk.chunkWidth);
+            meshGenerator.SetFloat("voxelSize", voxelWidth);
+            meshGenerator.SetInt("chunkWidth", chunk.lods[lodIndex].width);
 
             meshGenerator.SetBuffer(0, "voxels", chunkVoxelBuffer);
-            meshGenerator.SetBuffer(0, "leftEdgeVoxels", leftEdgeVoxelBuffer);
-            meshGenerator.SetBuffer(0, "bottomEdgeVoxels", bottomEdgeVoxelBuffer);
 
             meshGenerator.SetBuffer(0, "verts", vertsBuffer);
             meshGenerator.SetBuffer(0, "tris", trisBuffer);
 
             // Run computation
-            meshGenerator.Dispatch(0, chunk.chunkWidth / 8, chunk.chunkWidth / 8, 1);
+            meshGenerator.Dispatch(0, chunk.lods[lodIndex].width / 8, chunk.lods[lodIndex].width / 8, 1);
 
             // Read back data
             vertsBuffer.GetData(verts);
             trisBuffer.GetData(tris);
             Debug.Log($"Verts: {verts.Length} tris: {tris.Length}");
             
-            /*
-            for (int ti = 0; ti < tris.Length; ti++)
-            {
-                int i = tris[ti];
-                try {
-                    Debug.Log($"Vertex Index {i % 12} at tri {ti} is valid and point to {verts[i]}.");
-                }
-                catch {
-                    Debug.LogError($"Index {i} at tri {ti} is not valid.");
-                    break;
-                }
-            }
-            */
-            
 
             // Use Data
             mesh.Clear();
             mesh.SetVertices(verts);
-            mesh.triangles = new int[chunk.voxels.Length * 18];
+            mesh.triangles = new int[chunk.lods[lodIndex].voxels.Length * 18];
             mesh.triangles = tris;
             mesh.RecalculateNormals();
 
@@ -139,8 +142,6 @@ namespace VoxelTerrain {
 
             // Dispose all buffers
             chunkVoxelBuffer.Dispose();
-            leftEdgeVoxelBuffer.Dispose();
-            bottomEdgeVoxelBuffer.Dispose();
             vertsBuffer.Dispose();
             trisBuffer.Dispose();
         }
@@ -153,8 +154,8 @@ namespace VoxelTerrain {
                 foreach (Vector3 vert in mesh.vertices) {
                     Gizmos.DrawSphere(transform.position + vert, 0.1f);
                 }
-            }
-            */
+            }*/
+            
         }
     }
 }

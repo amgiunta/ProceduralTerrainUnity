@@ -16,13 +16,59 @@ namespace VoxelTerrain {
     }
 
     [System.Serializable]
+    public struct ChunkLod {
+        public int width;
+        public Voxel[] voxels;
+        public Voxel[] leftEdge;
+        public Voxel[] bottomEdge;
+    }
+
+    [System.Serializable]
     public struct Chunk {
         public int2 gridPosition;
         public Grid grid;
         public int chunkWidth;
-        public Voxel[] voxels;
-        public Voxel[] leftEdge;
-        public Voxel[] bottomEdge;
+        public Dictionary<int, ChunkLod> lods;
+        public void SetChunkLod(int lodIndex, ChunkLod lod)
+        {
+            if (lods.ContainsKey(lodIndex))
+            {
+                lods[lodIndex] = lod;
+            }
+
+            lods.Add(lodIndex, lod);
+        }
+
+        public Voxel[] GetVoxels (int lod) {
+            if (lod >= lods.Count) {
+                Debug.LogWarning($"Chunk lod {lod} too low and does not exist. Using lowest available lod.");
+                return lods[lods.Count - 1].voxels;
+            }
+
+            return lods[lod].voxels;
+        }
+
+        public Voxel[] GetLeftEdge(int lod)
+        {
+            if (lod >= lods.Count)
+            {
+                Debug.LogWarning($"Chunk lod {lod} too low and does not exist. Using lowest available lod.");
+                return lods[lods.Count - 1].leftEdge;
+            }
+
+            return lods[lod].leftEdge;
+        }
+
+        public Voxel[] GetBottomEdge(int lod)
+        {
+            if (lod >= lods.Count)
+            {
+                Debug.LogWarning($"Chunk lod {lod} too low and does not exist. Using lowest available lod.");
+                return lods[lods.Count - 1].bottomEdge;
+            }
+
+            return lods[lod].bottomEdge;
+        }
     }
 
     [System.Serializable]
@@ -37,7 +83,7 @@ namespace VoxelTerrain {
             public Dictionary<JobHandle, IJobParallelFor> runningJobs;
             public int chunkWidth;
 
-            public delegate void chunkProcessCallback(int2 gridPosition, Voxel[] chunkData, Voxel[] leftEdgeData, Voxel[] bottomEdgeData);
+            public delegate void chunkProcessCallback(int2 gridPosition, Voxel[] chunkData, Voxel[] leftEdgeData, Voxel[] bottomEdgeData, int lodIndex);
 
             public abstract void QueueChunk(Chunk chunk);
             public abstract void QueueChunks(List<Chunk> chunks);
@@ -76,26 +122,32 @@ namespace VoxelTerrain {
 
             public override void QueueChunk(Chunk chunk)
             {
-                float[] noise = new float[chunkWidth * chunkWidth];
-
-                PerlinTerrainGeneratorJob job = new PerlinTerrainGeneratorJob
+                int lodWidth = chunk.chunkWidth;
+                for (int i = 0; lodWidth >= 8 ; i++)
                 {
-                    chunkData = new NativeArray<Voxel>(chunk.voxels, Allocator.Persistent),
-                    leftEdgeData = new NativeArray<Voxel>(chunk.leftEdge, Allocator.Persistent),
-                    bottomEdgeData = new NativeArray<Voxel>(chunk.bottomEdge, Allocator.Persistent),
-                    minChunkHeight = minHeight,
-                    maxChunkHeight = maxHeight,
-                    chunkWidth = chunkWidth,
-                    chunkPosition = chunk.gridPosition,
-                    generatorNoiseScale = new float2(generatorNoiseScale.x, generatorNoiseScale.y),
-                    heightNormalNoiseScale = new float2(heightNormalNoiseScale.x, heightNormalNoiseScale.y),
-                    heightNormalIntensity = heightNormalIntensity,
-                    seed = seed
-                };
+                    PerlinTerrainGeneratorJob job = new PerlinTerrainGeneratorJob
+                    {
+                        chunkData = new NativeArray<Voxel>(new Voxel[lodWidth * lodWidth], Allocator.Persistent),
+                        leftEdgeData = new NativeArray<Voxel>(new Voxel[lodWidth], Allocator.Persistent),
+                        bottomEdgeData = new NativeArray<Voxel>(new Voxel[lodWidth], Allocator.Persistent),
+                        minChunkHeight = minHeight,
+                        maxChunkHeight = maxHeight,
+                        chunkWidth = chunkWidth,
+                        lodWidth = lodWidth,
+                        lodIndex = i,
+                        chunkPosition = chunk.gridPosition,
+                        generatorNoiseScale = new float2(generatorNoiseScale.x, generatorNoiseScale.y),
+                        heightNormalNoiseScale = new float2(heightNormalNoiseScale.x, heightNormalNoiseScale.y),
+                        heightNormalIntensity = heightNormalIntensity,
+                        seed = seed
+                    };
 
 
-                JobHandle handle = job.Schedule(chunk.voxels.Length, chunk.voxels.Length);
-                runningJobs.Add(handle, job);
+                    JobHandle handle = job.Schedule(lodWidth * lodWidth, lodWidth * lodWidth);
+                    runningJobs.Add(handle, job);
+
+                    lodWidth /= 2;
+                }
             }
 
             public override void QueueChunks(List<Chunk> chunks)
@@ -118,7 +170,8 @@ namespace VoxelTerrain {
                         process.Value.chunkPosition,
                         process.Value.chunkData.ToArray(),
                         process.Value.leftEdgeData.ToArray(),
-                        process.Value.bottomEdgeData.ToArray()
+                        process.Value.bottomEdgeData.ToArray(),
+                        process.Value.lodIndex
                     );
 
                     process.Value.chunkData.Dispose();
@@ -137,6 +190,8 @@ namespace VoxelTerrain {
             public NativeArray<Voxel> leftEdgeData;
             public NativeArray<Voxel> bottomEdgeData;
             public int chunkWidth;
+            public int lodWidth;
+            public int lodIndex;
             public int minChunkHeight;
             public int maxChunkHeight;
             public float2 generatorNoiseScale;
@@ -147,20 +202,22 @@ namespace VoxelTerrain {
             public int2 chunkPosition;
 
             private float GetHeightAtPosition(float x, float y) {
-                float heightNormal = Noise(x, y, chunkPosition * chunkWidth, heightNormalNoiseScale) * heightNormalIntensity;
+                int stride = Mathf.Max(1, chunkWidth / lodWidth);
+
+                float heightNormal = Noise(x, y, stride, chunkPosition * chunkWidth, heightNormalNoiseScale) * heightNormalIntensity;
                 heightNormal = math.remap(-1, 1, 0, 1, heightNormal);
 
-                float fHeight = Noise(x, y, chunkPosition * chunkWidth, generatorNoiseScale) * heightNormal;
+                float fHeight = Noise(x, y, stride, chunkPosition * chunkWidth, generatorNoiseScale) * heightNormal;
 
-                //fHeight = math.remap(-1, 1, minChunkHeight - (minChunkHeight * heightNormal), maxChunkHeight - (maxChunkHeight * heightNormal), fHeight);
                 fHeight = math.remap(-1, 1, minChunkHeight, maxChunkHeight, fHeight);
                 return fHeight;
             }
 
             public void Execute(int voxelId) {
                 Voxel voxel = chunkData[voxelId];
-                voxel.x = voxelId % chunkWidth;
-                voxel.y = voxelId / chunkWidth;
+                voxel.x = voxelId % lodWidth;
+                voxel.y = voxelId / lodWidth;
+
                 voxel.height = (int) GetHeightAtPosition(voxel.x, voxel.y);
 
                 chunkData[voxelId] = voxel;
@@ -168,8 +225,9 @@ namespace VoxelTerrain {
                 if (voxel.x == 0)
                 {
                     Voxel leftVoxel = leftEdgeData[voxel.y];
-                    leftVoxel.x = - 1;
+                    leftVoxel.x = - 1 * (lodIndex + 1);
                     leftVoxel.y = voxel.y;
+
                     leftVoxel.height = (int) GetHeightAtPosition(leftVoxel.x, leftVoxel.y);
 
                     leftEdgeData[voxel.y] = leftVoxel;
@@ -178,16 +236,16 @@ namespace VoxelTerrain {
                 if (voxel.y == 0) { 
                     Voxel bottomVoxel = bottomEdgeData[voxel.x];
                     bottomVoxel.x = voxel.x;
-                    bottomVoxel.y = - 1;
+                    bottomVoxel.y = - 1 * (lodIndex + 1);
                     bottomVoxel.height = (int) GetHeightAtPosition(bottomVoxel.x, bottomVoxel.y);
 
                     bottomEdgeData[voxel.x] = bottomVoxel;
                 }
             }
 
-            public float Noise(float x, float y, float2 offset = default, float2 scale = default)
+            public float Noise(float x, float y, int stride = 1, float2 offset = default, float2 scale = default)
             {
-                float2 pos = new float2(x + Mathf.PI + seed, y + Mathf.PI + seed) + offset;
+                float2 pos = new float2(x * stride + Mathf.PI + seed, y * stride + Mathf.PI + seed) + offset;
                 if (scale.ToVector2() != Vector2.zero)
                     pos *= scale;
                 return math.remap(0, 1, -1, 1, Mathf.PerlinNoise(pos.x, pos.y));
