@@ -6,7 +6,7 @@ namespace VoxelTerrain {
 
     [RequireComponent(typeof(MeshRenderer))]
     [RequireComponent(typeof(MeshFilter))]
-    [RequireComponent(typeof(BoxCollider))]
+    [RequireComponent(typeof(MeshCollider))]
     public class TerrainChunk : MonoBehaviour
     {
         public Chunk chunk;
@@ -43,7 +43,6 @@ namespace VoxelTerrain {
         public int[] tris;
 
         private Mesh _mesh;
-        private BoxCollider _collider;
         private MeshFilter _meshFilter;
         private MeshCollider meshCollider;
 
