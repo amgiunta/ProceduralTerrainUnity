@@ -13,6 +13,7 @@ namespace VoxelTerrain {
     [System.Serializable]
     public struct Grid {
         public float voxelSize;
+        public int chunkSize;
     }
 
     [System.Serializable]
@@ -32,6 +33,7 @@ namespace VoxelTerrain {
             if (lods.ContainsKey(lodIndex))
             {
                 lods[lodIndex] = lod;
+                return;
             }
 
             lods.Add(lodIndex, lod);
@@ -134,6 +136,31 @@ namespace VoxelTerrain {
                 }
             }
 
+            public virtual void ResolveJob(JobHandle key, chunkProcessCallback onChunkComplete) {
+                var job = runningJobs[key];
+
+                Debug.Log($"Job is completed for chunk {job.chunkPosition}");
+
+                key.Complete();
+                onChunkComplete(
+                        job.chunkPosition,
+                        job.chunkData.ToArray(),
+                        job.lodIndex
+                    );
+            }
+
+            public virtual void ResolveJob(chunkProcessCallback onChunkComplete) {
+                foreach (var process in runningJobs) {
+                    if (process.Key.IsCompleted)
+                    {
+                        ResolveJob(process.Key, onChunkComplete);
+                        process.Value.chunkData.Dispose();
+                        runningJobs.Remove(process.Key);
+                        return;
+                    }
+                }
+            }
+
             public override void ResolveJobs(chunkProcessCallback onChunkComplete)
             {
                 foreach (var process in runningJobs)
@@ -150,11 +177,10 @@ namespace VoxelTerrain {
                 }
 
                 runningJobs.Clear();
-            }
-
-            
+            }           
         }
 
+        [BurstCompile]
         public struct PerlinTerrainGeneratorJob : IJobParallelFor {
             public NativeArray<Voxel> chunkData;
             public int chunkWidth;

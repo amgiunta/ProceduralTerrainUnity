@@ -53,6 +53,7 @@ MonoBehaviour:
       y: 0
     grid:
       voxelSize: 0
+      chunkSize: 0
     chunkWidth: 0
   currentLod:
     width: 0
@@ -139,5 +140,5 @@ MeshCollider:
   m_Enabled: 1
   serializedVersion: 4
   m_Convex: 0
-  m_CookingOptions: 30
+  m_CookingOptions: 2
   m_Mesh: {fileID: 0}

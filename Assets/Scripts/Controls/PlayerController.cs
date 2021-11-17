@@ -2,10 +2,13 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Unity.Mathematics;
 using VoxelTerrain;
 
 public class PlayerController : MonoBehaviour
 {
+    public static PlayerController instance;
+
     public bool moveable = true;
     public LayerMask terrainMask;
 
@@ -20,6 +23,17 @@ public class PlayerController : MonoBehaviour
     public float minZoomDistance = 10f;
     [Range(0, 5)] public float zoomSensetivity = 1;
 
+    public int2 gridPosition {
+        get {
+            int vx = Mathf.FloorToInt(transform.position.x * TerrainManager.instance.grid.voxelSize);
+            int vy = Mathf.FloorToInt(transform.position.z * TerrainManager.instance.grid.voxelSize);
+            return new int2(
+                vx / TerrainManager.instance.grid.chunkSize,
+                vy / TerrainManager.instance.grid.chunkSize
+            );
+        }
+    }
+
     private Camera gameCamera;
     private Vector3 movement;
     private bool deselerate = false;
@@ -28,6 +42,11 @@ public class PlayerController : MonoBehaviour
 
     void Awake() {
         gameCamera = GetComponent<Camera>();
+
+        if (instance) {
+            Destroy(instance.gameObject);
+        }
+        instance = this;
     }
 
     // Start is called before the first frame update

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Profiling;
 
 namespace VoxelTerrain {
 
@@ -12,21 +13,13 @@ namespace VoxelTerrain {
         public Chunk chunk;
         public ChunkLod currentLod;
         public int lodIndex = 0;
+        public int colliderLodIndex = 3;
         public ComputeShader meshGenerator;
 
         [HideInInspector]
         public bool visible = false;
 
-        private Mesh mesh {
-            get {
-                if (!_mesh) {
-                    _mesh = new Mesh();
-                    _mesh.name = "chunk";
-                }
-
-                return _mesh;
-            }
-        }
+        public Dictionary<int, Mesh> meshes;
         private MeshFilter meshFilter {
             get {
                 if (!_meshFilter) {
@@ -42,7 +35,6 @@ namespace VoxelTerrain {
         public Vector3[] verts;
         public int[] tris;
 
-        private Mesh _mesh;
         private MeshFilter _meshFilter;
         private MeshCollider meshCollider;
 
@@ -51,8 +43,8 @@ namespace VoxelTerrain {
             gameCamera = GameObject.FindGameObjectWithTag("MainCamera").GetComponent<Camera>();
             meshRend = GetComponent<MeshRenderer>();
             
-            meshFilter.sharedMesh = mesh;
             meshCollider = GetComponent<MeshCollider>();
+            meshes = new Dictionary<int, Mesh>();
         }
 
         public void Update()
@@ -70,7 +62,7 @@ namespace VoxelTerrain {
 
         private void DetectLod() {
             if (!gameCamera) {
-                Debug.Log("Could not find camera");
+                //Debug.Log("Could not find camera");
                 ChangeLod(TerrainManager.instance.lodRanges.Count - 1);
                 return;
             }
@@ -90,40 +82,59 @@ namespace VoxelTerrain {
         }
 
         public void ChangeLod(int lodIndex) {
-            if (this.lodIndex == lodIndex) { return; }
-
             this.lodIndex = lodIndex;
 
-            UpdateChunkMesh();
+            if (!meshes.ContainsKey(lodIndex))
+            {
+                //Debug.Log($"Should generate mesh for lod {lodIndex}", this);
+                if (GenerateChunkMesh(lodIndex))
+                {
+                    Debug.Log($"Should render mesh for lod {lodIndex}", this);
+                    if (meshFilter.sharedMesh == meshes[lodIndex]) { return; }
+
+                    meshFilter.sharedMesh = meshes[lodIndex];
+                }
+            }
+            else {
+                Debug.Log($"Should render mesh for lod {lodIndex}", this);
+                if (meshFilter.sharedMesh == meshes[lodIndex]) { return; }
+
+                meshFilter.sharedMesh = meshes[lodIndex];
+            }
+
+            if (meshes.ContainsKey(colliderLodIndex)) {
+                if (meshCollider.sharedMesh != meshes[colliderLodIndex]) {
+                    meshCollider.sharedMesh = meshes[colliderLodIndex];
+                }
+            }
         }
 
         public void SetChunk(Chunk chunk, bool reRender = true) {
             this.chunk = chunk;
 
-            meshFilter.sharedMesh = mesh;
 
             transform.position = new Vector3(chunk.gridPosition.x, 0f, chunk.gridPosition.y) * (chunk.grid.voxelSize * chunk.chunkWidth);
-
-            if (meshCollider != null) {
-                meshCollider.sharedMesh = mesh;
-            }
-
-            if (reRender)
-                UpdateChunkMesh();
         }
 
-        public void UpdateChunkMesh() {
+        public bool GenerateChunkMesh(int lodIndex) {
+            Profiler.BeginSample("Generate Chunk Mesh");
+
             // Initializations
             int sizeVector3 = sizeof(float) * 3;
             int sizeVoxel = sizeof(int) * 3;
 
-            int lodIndex = this.lodIndex;
-            if (chunk.lods.Count <= lodIndex) {
-                Debug.LogWarning($"Lod index {lodIndex} does not exist. Using lowest lod", this);
-                lodIndex = chunk.lods.Count - 1;
+            if (lodIndex >= chunk.lods.Count) {
+                //Debug.Log($"Can't generate mesh for lod {lodIndex}", this);
+                Profiler.EndSample();
+                return false;
             }
 
-            currentLod = chunk.lods[lodIndex];
+            if (!meshes.ContainsKey(lodIndex))
+            {
+                meshes.Add(lodIndex, new Mesh());
+            }
+
+            Debug.Log($"Mesh Count {meshes.Count}", this);
 
             float voxelWidth = (chunk.grid.voxelSize * (chunk.chunkWidth / chunk.lods[lodIndex].width));
 
@@ -154,21 +165,25 @@ namespace VoxelTerrain {
             // Read back data
             vertsBuffer.GetData(verts);
             trisBuffer.GetData(tris);
-            
+
 
             // Use Data
-            mesh.Clear();
-            mesh.SetVertices(verts);
-            mesh.triangles = new int[chunk.lods[lodIndex].voxels.Length * 18];
-            mesh.triangles = tris;
-            mesh.RecalculateNormals();
+            meshes[lodIndex].Clear();
+            meshes[lodIndex].SetVertices(verts);
+            meshes[lodIndex].name = $"Chunk {chunk.gridPosition} LOD {lodIndex}";
+            meshes[lodIndex].triangles = new int[chunk.lods[lodIndex].voxels.Length * 18];
+            meshes[lodIndex].triangles = tris;
+            meshes[lodIndex].RecalculateNormals();
 
-            bounds = new Bounds(transform.position + (mesh.bounds.max / 2), (mesh.bounds.max - mesh.bounds.min));
+            bounds = new Bounds(transform.position + (meshes[lodIndex].bounds.max / 2), (meshes[lodIndex].bounds.max - meshes[lodIndex].bounds.min));
 
             // Dispose all buffers
             chunkVoxelBuffer.Dispose();
             vertsBuffer.Dispose();
             trisBuffer.Dispose();
+
+            Profiler.EndSample();
+            return true;
         }
 
         private void OnDrawGizmosSelected()
