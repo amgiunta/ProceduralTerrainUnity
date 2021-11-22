@@ -75,7 +75,7 @@ public class PlayerController : MonoBehaviour
 
     public bool TerrainBelow(out RaycastHit hit) {
         Ray ray = new Ray(transform.position, Vector3.down);
-        return Physics.SphereCast(ray, TerrainManager.instance.grid.voxelSize/2, out hit, maxZoomDistance * 2, terrainMask);
+        return Physics.Raycast(ray, out hit, maxZoomDistance * 2, terrainMask);
     }
 
     public void SetMovement(InputAction.CallbackContext context) {

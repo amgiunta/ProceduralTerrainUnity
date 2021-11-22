@@ -89,14 +89,14 @@ namespace VoxelTerrain {
                 //Debug.Log($"Should generate mesh for lod {lodIndex}", this);
                 if (GenerateChunkMesh(lodIndex))
                 {
-                    Debug.Log($"Should render mesh for lod {lodIndex}", this);
+                    //Debug.Log($"Should render mesh for lod {lodIndex}", this);
                     if (meshFilter.sharedMesh == meshes[lodIndex]) { return; }
 
                     meshFilter.sharedMesh = meshes[lodIndex];
                 }
             }
             else {
-                Debug.Log($"Should render mesh for lod {lodIndex}", this);
+                //Debug.Log($"Should render mesh for lod {lodIndex}", this);
                 if (meshFilter.sharedMesh == meshes[lodIndex]) { return; }
 
                 meshFilter.sharedMesh = meshes[lodIndex];
@@ -123,7 +123,7 @@ namespace VoxelTerrain {
             int sizeVector3 = sizeof(float) * 3;
             int sizeVoxel = sizeof(int) * 3;
 
-            if (lodIndex >= chunk.lods.Count) {
+            if (!chunk.lods.ContainsKey(lodIndex)) {
                 //Debug.Log($"Can't generate mesh for lod {lodIndex}", this);
                 Profiler.EndSample();
                 return false;
@@ -134,7 +134,7 @@ namespace VoxelTerrain {
                 meshes.Add(lodIndex, new Mesh());
             }
 
-            Debug.Log($"Mesh Count {meshes.Count}", this);
+            //Debug.Log($"Mesh Count {meshes.Count}", this);
 
             float voxelWidth = (chunk.grid.voxelSize * (chunk.chunkWidth / chunk.lods[lodIndex].width));
 

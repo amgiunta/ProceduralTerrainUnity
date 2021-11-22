@@ -1,10 +1,9 @@
-using System.Collections;
+using System.IO;
+using System.Linq;
 using System.Collections.Generic;
-using Unity.Collections;
+using System.Runtime.Serialization.Formatters.Binary;
 using UnityEngine;
 using UnityEngine.Events;
-using Unity.Jobs;
-using UnityEngine.Jobs;
 using Unity.Mathematics;
 using VoxelTerrain.Generators;
 using UnityEngine.Profiling;
@@ -15,6 +14,7 @@ namespace VoxelTerrain
     {
         public static TerrainManager instance;
 
+        public string worldName = "NewWorld";
         public Grid grid;
 
         public float generatorFrequency = 0.02f;
@@ -50,6 +50,7 @@ namespace VoxelTerrain
                 return _generator;
             }
         }
+        public WorldSaveData saveData;
 
         private PerlinTerrainGenerator _generator;
 
@@ -64,7 +65,19 @@ namespace VoxelTerrain
         // Start is called before the first frame update
         void Start()
         {
+            Debug.Log(Application.persistentDataPath);
+            chunks = new Dictionary<int2, Chunk>();
+            chunkObjects = new Dictionary<int2, TerrainChunk>();
+
+            LoadWorld();
+
             StartGenerator();
+        }
+
+        private void OnDisable()
+        {
+            SaveWorld();
+            generator?.DisposeJobs();
         }
 
         // Update is called once per frame
@@ -85,7 +98,7 @@ namespace VoxelTerrain
             elapsedTime += Time.fixedDeltaTime;
             if (elapsedTime - lastUpdate > generatorFrequency)
             {
-                generator?.ResolveJob(UpdateChunkObject);
+                generator?.ResolveClosestJob(PlayerController.instance.gridPosition, UpdateChunkObject);
                 lastUpdate = elapsedTime;
             }
         }
@@ -93,26 +106,39 @@ namespace VoxelTerrain
         public void LoadChunks(int2 gridPosition) {
             Profiler.BeginSample("Generate Chunk Data");
 
-            int2 chunkLocation;
-            for (int y = (int)-renderDistance; y < renderDistance; y++)
-            {
-                for (int x = (int)-renderDistance; x < renderDistance; x++)
-                {
-                    chunkLocation = gridPosition + new int2(x, y);
-                    if (math.distance(chunkLocation, gridPosition) > renderDistance) { continue; }
-                    else if (chunks.ContainsKey(chunkLocation)) { continue; }
+            int x = 0;
+            int y = 0;
+            int dx = 0;
+            int dy = -1;
 
-                    InitializeChunk(chunkLocation);
+            for (int i = 0; i < (renderDistance * renderDistance); i++) {
+                if (((-renderDistance / 2) < x && x <= (renderDistance / 2)) && ((-renderDistance / 2) < y && y <= (renderDistance / 2))) {
+                    int2 chunkLocation = gridPosition + new int2(x, y);
+                    if (math.distance(chunkLocation, gridPosition) < renderDistance) {
+                        if (chunks.ContainsKey(chunkLocation))
+                        {
+                            InstantiateChunkObject(chunks[chunkLocation]);
+                        }
+                        else
+                        {
+                            InitializeChunk(chunkLocation);
+                        }
+                    }
                 }
+                if (x == y || (x < 0 && x == -y) || (x > 0 && x == 1 - y)) {
+                    int temp = dx;
+                    dx = -dy;
+                    dy = temp;
+                }
+
+                x += dx;
+                y += dy;
             }
 
             Profiler.EndSample();
         }
 
         public void StartGenerator() {
-            chunks = new Dictionary<int2, Chunk>();
-            chunkObjects = new Dictionary<int2, TerrainChunk>();
-
             LoadChunks(default);
 
             OnStartGeneration.Invoke();
@@ -121,7 +147,8 @@ namespace VoxelTerrain
         public void InitializeChunk(int2 gridPosition) {
             Profiler.BeginSample("Initialize Chunk Data");
 
-            if (!chunks.ContainsKey(gridPosition)) {
+            if (!chunks.ContainsKey(gridPosition))
+            {
                 Chunk chunk = new Chunk();
                 chunk.gridPosition.x = gridPosition.x;
                 chunk.gridPosition.y = gridPosition.y;
@@ -129,7 +156,8 @@ namespace VoxelTerrain
                 chunk.chunkWidth = grid.chunkSize;
                 int lodWidth = grid.chunkSize;
                 int lods = 0;
-                while (lodWidth >= 8) {
+                while (lodWidth >= 8)
+                {
                     lods++;
                     lodWidth /= 2;
                 }
@@ -137,13 +165,15 @@ namespace VoxelTerrain
 
                 chunks.Add(gridPosition, chunk);
 
-                if (generator == null) {
+                if (generator == null)
+                {
                     Debug.LogWarning("generator is null");
                 }
                 generator.QueueChunk(chunk);
 
                 InstantiateChunkObject(chunks[gridPosition]);
             }
+
 
             Profiler.EndSample();
         }
@@ -178,11 +208,87 @@ namespace VoxelTerrain
             Profiler.EndSample();
         }
 
+        private void SaveWorld() {
+            saveData.chunks = chunks.Values.ToArray();
+            saveData.version = Application.version;
+            saveData.name = worldName;
+            saveData.Save();
+        }
+
+        private void LoadWorld() {
+            saveData = WorldSaveData.Load(worldName);
+            if (saveData == null)
+            {
+                saveData = new WorldSaveData(new Chunk[0], Application.version, worldName);
+            }
+            else {
+                foreach (Chunk chunk in saveData.chunks) {
+                    chunks.Add(chunk.gridPosition, chunk);
+                }
+            }
+        }
+
 #if UNITY_EDITOR
         void OnDrawGizmos()
         {
             //Gizmos.DrawWireCube(collider.bounds.min, collider.bounds.size);
         }
 #endif
+    }
+
+    [System.Serializable]
+    public class WorldSaveData {
+        public string version;
+        public string name;
+
+        public Chunk[] chunks;
+
+        public WorldSaveData(Chunk[] chunks, string version, string name = "NewWorld") {
+            this.chunks = chunks;
+            this.version = version;
+            this.name = name;
+        }
+
+        public void Save() {
+            if (!Directory.Exists($"{Application.persistentDataPath}/Saves")) {
+                Directory.CreateDirectory($"{Application.persistentDataPath}/Saves");
+            }
+
+            try
+            {
+                using (var file = File.Open($"{Application.persistentDataPath}/Saves/{name}", FileMode.OpenOrCreate))
+                {
+                    BinaryFormatter formatter = new BinaryFormatter();
+
+                    formatter.Serialize(file, this);
+                }
+            }
+            catch {
+                Debug.LogError($"Failed to save to file {Application.persistentDataPath}/Saves/{name}");
+            }
+        }
+
+        public static WorldSaveData Load(string name) { 
+            if (!Directory.Exists($"{Application.persistentDataPath}/Saves") || !File.Exists($"{Application.persistentDataPath}/Saves/{name}")) {
+                Debug.LogError($"Could not find file to load at {Application.persistentDataPath}/Saves/{name}");
+                return null;
+            }
+
+            try
+            {
+                using (var file = File.OpenRead($"{Application.persistentDataPath}/Saves/{name}"))
+                {
+                    BinaryFormatter formatter = new BinaryFormatter();
+
+                    WorldSaveData newData = (WorldSaveData) formatter.Deserialize(file);
+
+                    return newData;
+                }
+            }
+            catch {
+                Debug.LogError($"Could not load file at {Application.persistentDataPath}/Saves/{name}. The file may be corrupted.");
+                return null;
+            }
+        }
     }
 }
