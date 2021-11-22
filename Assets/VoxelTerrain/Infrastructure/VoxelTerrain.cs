@@ -1,7 +1,5 @@
 using UnityEngine.Jobs;
 using Unity.Collections;
-using System;
-using System.Collections;
 using System.Linq;
 using System.Collections.Generic;
 using Unity.Burst;
@@ -13,10 +11,11 @@ namespace VoxelTerrain {
     [System.Serializable]
     public struct Grid {
         public float voxelSize;
+        public int chunkSize;
     }
 
     [System.Serializable]
-    public struct ChunkLod {
+    public class ChunkLod {
         public int width;
         public Voxel[] voxels;
     }
@@ -32,6 +31,7 @@ namespace VoxelTerrain {
             if (lods.ContainsKey(lodIndex))
             {
                 lods[lodIndex] = lod;
+                return;
             }
 
             lods.Add(lodIndex, lod);
@@ -134,6 +134,50 @@ namespace VoxelTerrain {
                 }
             }
 
+            public virtual void ResolveJob(JobHandle key, chunkProcessCallback onChunkComplete) {
+                var job = runningJobs[key];
+
+                key.Complete();
+                onChunkComplete(
+                        job.chunkPosition,
+                        job.chunkData.ToArray(),
+                        job.lodIndex
+                    );
+            }
+
+            public virtual void ResolveJob(chunkProcessCallback onChunkComplete) {
+                foreach (var process in runningJobs) {
+                    if (process.Key.IsCompleted)
+                    {
+                        ResolveJob(process.Key, onChunkComplete);
+                        process.Value.chunkData.Dispose();
+                        runningJobs.Remove(process.Key);
+                        return;
+                    }
+                }
+            }
+
+            public virtual void ResolveClosestJob(int2 point, chunkProcessCallback onChunkComplete) {
+                if (runningJobs.Count == 0) { return; }
+
+                JobHandle closest = runningJobs.First().Key;
+                int2 closestPosition = runningJobs[closest].chunkPosition;
+                float closestDistance = math.distance(closestPosition, point);
+                foreach (var process in runningJobs) {
+                    int2 position = process.Value.chunkPosition;
+                    float distance = math.distance(position, point);
+                    if (distance < closestDistance) {
+                        closestDistance = distance;
+                        closestPosition = position;
+                        closest = process.Key;
+                    }
+                }
+
+                ResolveJob(closest, onChunkComplete);
+                runningJobs[closest].chunkData.Dispose();
+                runningJobs.Remove(closest);
+            }
+
             public override void ResolveJobs(chunkProcessCallback onChunkComplete)
             {
                 foreach (var process in runningJobs)
@@ -152,9 +196,19 @@ namespace VoxelTerrain {
                 runningJobs.Clear();
             }
 
-            
+            public virtual void DisposeJobs() {
+                foreach (var process in runningJobs)
+                {
+                    process.Key.Complete();
+
+                    process.Value.chunkData.Dispose();
+                }
+
+                runningJobs.Clear();
+            }
         }
 
+        [BurstCompile]
         public struct PerlinTerrainGeneratorJob : IJobParallelFor {
             public NativeArray<Voxel> chunkData;
             public int chunkWidth;
