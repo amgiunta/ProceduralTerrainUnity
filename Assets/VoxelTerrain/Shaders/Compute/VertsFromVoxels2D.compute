@@ -5,6 +5,10 @@ struct Voxel {
 	int x;
 	int y;
 	int height;
+    float3 normalNorth;
+    float3 normalSouth;
+    float3 normalEast;
+    float3 normalWest;
 };
 
 // Chunk data
@@ -16,17 +20,15 @@ RWStructuredBuffer<Voxel> voxels;
 // Mesh data
 RWStructuredBuffer<float3> verts;
 RWStructuredBuffer<int> tris;
+RWStructuredBuffer<float3> normals;
+RWStructuredBuffer<float2> uvs;
 
 void SetVoxelVerts(uint3 id, uint vertStart) {
 	uint vid = id.x + (id.y * chunkWidth);
 
-    //float3 v0 = VoxelPosToF3(vid, false, false) * voxelSize;
     float3 v0 = float3(float(voxels[vid].x) * voxelSize, voxels[vid].height, float(voxels[vid].y) * voxelSize);
-	//float3 v1 = (VoxelPosToF3(vid, false, false) + float3(0, 0, 1)) * voxelSize;
     float3 v1 = float3(float(voxels[vid].x) * voxelSize, voxels[vid].height, (float(voxels[vid].y) + 1) * voxelSize);
-	//float3 v2 = (VoxelPosToF3(vid, false, false) + float3(1, 0, 1)) * voxelSize;
     float3 v2 = float3((float(voxels[vid].x) + 1) * voxelSize, voxels[vid].height, (float(voxels[vid].y) + 1) * voxelSize);
-	//float3 v3 = (VoxelPosToF3(vid, false, false) + float3(1, 0, 0)) * voxelSize;
     float3 v3 = float3((float(voxels[vid].x) + 1) * voxelSize, voxels[vid].height, float(voxels[vid].y) * voxelSize);
 	float3 v4;
 	if (id.y == 0) {
@@ -47,35 +49,94 @@ void SetVoxelVerts(uint3 id, uint vertStart) {
 
 	float3 v8;
 	if (id.x == 0) {
-        v8 = float3(voxels[vid].x * voxelSize, -10, voxels[vid].y * voxelSize);
+        v8 = float3(voxels[vid].x * voxelSize, -10, float(voxels[vid].y + 1) * voxelSize);
+
     }
 	else {
-        v8 = float3(voxels[vid].x * voxelSize, float(voxels[vid - 1].height), voxels[vid].y * voxelSize);
+        v8 = float3(voxels[vid].x * voxelSize, float(voxels[vid - 1].height), float(voxels[vid].y + 1) * voxelSize);
     }
 
-	float3 v9;
+	float3 v11;
 	if (id.x == 0) {
-        v9 = float3(voxels[vid].x * voxelSize, -10, (voxels[vid].y + 1) * voxelSize);
+        v11 = float3(voxels[vid].x * voxelSize, -10, voxels[vid].y * voxelSize);
     }
 	else {
-        v9 = float3(voxels[vid].x * voxelSize, float(voxels[vid - 1].height), (voxels[vid].y + 1) * voxelSize);
+        v11 = float3(voxels[vid].x * voxelSize, float(voxels[vid - 1].height), voxels[vid].y * voxelSize);
     }
 
 	// Vert order
 	// v0, v1, v2, v3, v4, v0, v3, v7, v4, v9, v1, v0
 	
+    // Top
 	verts[vertStart] = v0;
+    normals[vertStart] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));
+    uvs[vertStart] = float2(0, 0);
+	
 	verts[vertStart + 1] = v1;
+    normals[vertStart + 1] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));
+    uvs[vertStart + 1] = float2(0, 1);
+	
 	verts[vertStart + 2] = v2;
+    normals[vertStart + 2] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));
+    uvs[vertStart + 2] = float2(1, 1);
+	
 	verts[vertStart + 3] = v3;
+    normals[vertStart + 3] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));
+    uvs[vertStart + 3] = float2(1, 0);
+	
+    // Front
 	verts[vertStart + 4] = v4;
 	verts[vertStart + 5] = v0;
 	verts[vertStart + 6] = v3;
 	verts[vertStart + 7] = v7;
+    
+    uvs[vertStart + 4] = float2(0, 0);
+    uvs[vertStart + 5] = float2(0, abs(verts[vertStart + 5].y - verts[vertStart + 4].y) / voxelSize);
+    uvs[vertStart + 6] = float2(1, abs(verts[vertStart + 5].y - verts[vertStart + 4].y) / voxelSize);
+    uvs[vertStart + 7] = float2(1, 0);
+    
+    if (id.y == 0)
+    {
+        normals[vertStart + 4] = voxels[vid].normalSouth;
+        normals[vertStart + 5] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));
+        normals[vertStart + 6] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));
+        normals[vertStart + 7] = voxels[vid].normalSouth;
+
+    }
+    else
+    {
+        normals[vertStart + 4] = normalize(lerp(voxels[vid-chunkWidth].normalWest, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));	
+        normals[vertStart + 5] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));	
+        normals[vertStart + 6] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));	
+        normals[vertStart + 7] = normalize(lerp(voxels[vid-chunkWidth].normalEast, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));        
+    }
+    
+	
+    // Left
 	verts[vertStart + 8] = v8;
-	verts[vertStart + 9] = v9;
-	verts[vertStart + 10] = v1;
-	verts[vertStart + 11] = v0;
+	verts[vertStart + 9] = v1;
+	verts[vertStart + 10] = v0;
+	verts[vertStart + 11] = v11;
+    
+    uvs[vertStart + 8] = float2(0, 0);
+    uvs[vertStart + 9] = float2(0, abs(verts[vertStart + 9].y - verts[vertStart + 8].y) / voxelSize);
+    uvs[vertStart + 10] = float2(1, abs(verts[vertStart + 9].y - verts[vertStart + 8].y) / voxelSize);
+    uvs[vertStart + 11] = float2(1, 0);
+    
+    if (id.x == 0)
+    {
+        normals[vertStart + 8] = voxels[vid].normalWest;	
+        normals[vertStart + 9] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));	
+        normals[vertStart + 10] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));	
+        normals[vertStart + 11] = voxels[vid].normalWest;
+    }
+    else
+    {
+        normals[vertStart + 8] = normalize(lerp(voxels[vid].normalWest, voxels[vid-1].normalNorth, float3(0.5, 0.5, 0.5)));
+        normals[vertStart + 9] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));
+        normals[vertStart + 10] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));	
+        normals[vertStart + 11] = normalize(lerp(voxels[vid].normalWest, voxels[vid-1].normalSouth, float3(0.5, 0.5, 0.5)));
+    }
 	
     uint vertEnd = vertStart + 11;
 	
@@ -83,15 +144,24 @@ void SetVoxelVerts(uint3 id, uint vertStart) {
     {
 		//v12
         verts[vertEnd + 1] = float3(float(voxels[vid].x + 1) * voxelSize, -10, voxels[vid].y * voxelSize);
+        normals[vertEnd + 1] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));
+        uvs[vertEnd + 1] = float2(0, 0);
 		
 		//v13
         verts[vertEnd + 2] = v3;
+        normals[vertEnd + 2] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));
+        uvs[vertEnd + 2] = float2(0, abs(verts[vertEnd + 2].y - verts[vertEnd + 1].y) / voxelSize);
 		
 		//v14
         verts[vertEnd + 3] = v2;
+        normals[vertEnd + 3] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));
+        uvs[vertEnd + 3] = float2(1, abs(verts[vertEnd + 2].y - verts[vertEnd + 1].y) / voxelSize);
 
 		//v15
         verts[vertEnd + 4] = float3(float(voxels[vid].x + 1) * voxelSize, -10, float(voxels[vid].y + 1) * voxelSize);
+        normals[vertEnd + 4] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));
+        uvs[vertEnd + 4] = float2(1, 0);
+        
         vertEnd = vertEnd + 4;
     }
 	
@@ -99,15 +169,24 @@ void SetVoxelVerts(uint3 id, uint vertStart) {
     {
 		//v16
         verts[vertEnd + 1] = float3(float(voxels[vid].x + 1) * voxelSize, -10, float(voxels[vid].y + 1) * voxelSize);
+        normals[vertEnd + 1] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));
+        uvs[vertEnd + 1] = float2(0, 0);
 		
 		//v17
         verts[vertEnd + 2] = v2;
+        normals[vertEnd + 2] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));
+        uvs[vertEnd + 2] = float2(0, abs(verts[vertEnd + 2].y - verts[vertEnd + 1].y) / voxelSize);
 		
 		//v18
         verts[vertEnd + 3] = v1;
+        normals[vertEnd + 3] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));
+        uvs[vertEnd + 3] = float2(1, abs(verts[vertEnd + 2].y - verts[vertEnd + 1].y) / voxelSize);
 		
 		//v19
         verts[vertEnd + 4] = float3(voxels[vid].x * voxelSize, -10, float(voxels[vid].y + 1) * voxelSize);
+        normals[vertEnd + 4] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));
+        uvs[vertEnd + 4] = float2(1, 0);
+        
         vertEnd = vertEnd + 4;
     }
 }
@@ -131,9 +210,9 @@ void SetTris(uint vertStart, uint triStart, uint3 id) {
 
 	tris[triStart + 12] = vertStart + 8;
 	tris[triStart + 13] = vertStart + 9;
-	tris[triStart + 14] = vertStart + 10;
+	tris[triStart + 14] = vertStart + 11;
 
-	tris[triStart + 15] = vertStart + 8;
+	tris[triStart + 15] = vertStart + 9;
 	tris[triStart + 16] = vertStart + 10;
 	tris[triStart + 17] = vertStart + 11;
 	

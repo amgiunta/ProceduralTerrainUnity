@@ -144,7 +144,7 @@ public class PlayerController : MonoBehaviour
 
         Debug.DrawLine(terrainPoint.point, targetPoint, Color.yellow);
 
-        transform.position = Vector3.Lerp(transform.position, targetPoint, Time.fixedDeltaTime * moveSpeed);
+        transform.position = Vector3.Lerp(transform.position, targetPoint, Time.fixedDeltaTime * moveSpeed/10f);
     }
 
     private void Deselerate() {

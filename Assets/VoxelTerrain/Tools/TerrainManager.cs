@@ -76,7 +76,7 @@ namespace VoxelTerrain
 
         private void OnDisable()
         {
-            SaveWorld();
+            //SaveWorld();
             generator?.DisposeJobs();
         }
 

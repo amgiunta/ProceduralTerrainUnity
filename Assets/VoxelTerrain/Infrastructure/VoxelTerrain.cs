@@ -52,6 +52,10 @@ namespace VoxelTerrain {
         public int x;
         public int y;
         public int height;
+        public float3 normalNorth;
+        public float3 normalSouth;
+        public float3 normalEast;
+        public float3 normalWest;
     }
 
     namespace Generators {
@@ -241,6 +245,21 @@ namespace VoxelTerrain {
                 voxel.y = voxelId / lodWidth;
 
                 voxel.height = (int) GetHeightAtPosition(voxel.x, voxel.y);
+                int northHeight = (int) GetHeightAtPosition(voxel.x, voxel.y + 1);
+                float3 northHeading = (new float3(voxel.x, northHeight, voxel.y + 1)) - (new float3(voxel.x, voxel.height, voxel.y));
+                voxel.normalNorth = voxel.height == northHeight ? new float3(0, 1, 0) : math.normalizesafe(math.cross(new float3(-1, 0, 0), northHeading));
+
+                int southHeight = (int)GetHeightAtPosition(voxel.x, voxel.y - 1);
+                float3 southHeading =  (new float3(voxel.x, southHeight, voxel.y - 1)) - (new float3(voxel.x, voxel.height, voxel.y));
+                voxel.normalSouth = voxel.height == southHeight ? new float3(0, 1, 0) : math.normalizesafe(math.cross(new float3(1, 0, 0), southHeading));
+
+                int eastHeight = (int)GetHeightAtPosition(voxel.x + 1, voxel.y);
+                float3 eastHeading =  (new float3(voxel.x + 1, eastHeight, voxel.y)) - (new float3(voxel.x, voxel.height, voxel.y));
+                voxel.normalEast =voxel.height == eastHeight ? new float3(0, 1, 0) : math.normalizesafe(math.cross(new float3(0, 0, 1), eastHeading));
+
+                int westHeight = (int)GetHeightAtPosition(voxel.x - 1, voxel.y);
+                float3 westHeading =  (new float3(voxel.x - 1, westHeight, voxel.y)) - (new float3(voxel.x, voxel.height, voxel.y));
+                voxel.normalWest =voxel.height == westHeight ? new float3(0, 1, 0) : math.normalizesafe(math.cross(new float3(0, 0, -1), westHeading));
 
                 chunkData[voxelId] = voxel;
             }
