@@ -59,6 +59,7 @@ MonoBehaviour:
     width: 0
     voxels: []
   lodIndex: 0
+  colliderLodIndex: 3
   meshGenerator: {fileID: 7200000, guid: f49e3ea65c77e514da3a766c517d0cf6, type: 3}
   visible: 0
   bounds:
@@ -85,7 +86,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10302, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: 8906b06e8bef0bd4b93ec0713c85c137, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

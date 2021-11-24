@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: TriangleMaterial
-  m_Shader: {fileID: 4800000, guid: 65c1e46a7cbdd4d739302fd1183d192d, type: 3}
+  m_Name: Unlit Terrain
+  m_Shader: {fileID: 4800000, guid: 236a618aa5512b749833a6b2381910de, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -55,7 +55,6 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    m_Ints: []
     m_Floats:
     - _BumpScale: 1
     - _Cutoff: 0.5
@@ -74,7 +73,6 @@ Material:
     - _UVSec: 0
     - _ZWrite: 1
     m_Colors:
-    - _CollisionColor: {r: 0.4261714, g: 0.7075472, b: 0.25031152, a: 1}
-    - _Color: {r: 0.496, g: 0.496, b: 0.496, a: 0}
+    - _Color: {r: 0.033775367, g: 0.6509434, b: 0.27233663, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
   m_BuildTextureStacks: []

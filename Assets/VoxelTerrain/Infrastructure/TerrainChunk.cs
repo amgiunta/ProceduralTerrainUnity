@@ -62,7 +62,6 @@ namespace VoxelTerrain {
 
         private void DetectLod() {
             if (!gameCamera) {
-                //Debug.Log("Could not find camera");
                 ChangeLod(TerrainManager.instance.lodRanges.Count - 1);
                 return;
             }
@@ -86,17 +85,14 @@ namespace VoxelTerrain {
 
             if (!meshes.ContainsKey(lodIndex))
             {
-                //Debug.Log($"Should generate mesh for lod {lodIndex}", this);
                 if (GenerateChunkMesh(lodIndex))
                 {
-                    //Debug.Log($"Should render mesh for lod {lodIndex}", this);
                     if (meshFilter.sharedMesh == meshes[lodIndex]) { return; }
 
                     meshFilter.sharedMesh = meshes[lodIndex];
                 }
             }
             else {
-                //Debug.Log($"Should render mesh for lod {lodIndex}", this);
                 if (meshFilter.sharedMesh == meshes[lodIndex]) { return; }
 
                 meshFilter.sharedMesh = meshes[lodIndex];
@@ -121,10 +117,10 @@ namespace VoxelTerrain {
 
             // Initializations
             int sizeVector3 = sizeof(float) * 3;
-            int sizeVoxel = sizeof(int) * 3;
+            int sizeVector2 = sizeof(float) * 2;
+            int sizeVoxel = (sizeof(int) * 3) + (sizeVector3 * 4);
 
             if (!chunk.lods.ContainsKey(lodIndex)) {
-                //Debug.Log($"Can't generate mesh for lod {lodIndex}", this);
                 Profiler.EndSample();
                 return false;
             }
@@ -134,12 +130,12 @@ namespace VoxelTerrain {
                 meshes.Add(lodIndex, new Mesh());
             }
 
-            //Debug.Log($"Mesh Count {meshes.Count}", this);
-
             float voxelWidth = (chunk.grid.voxelSize * (chunk.chunkWidth / chunk.lods[lodIndex].width));
 
             Vector3[] verts = new Vector3[(chunk.lods[lodIndex].voxels.Length * 12) + (chunk.lods[lodIndex].width * 8)];
             int[] tris = new int[(chunk.lods[lodIndex].voxels.Length * 18) + (chunk.lods[lodIndex].width * 12)];
+            Vector3[] normals = new Vector3[(chunk.lods[lodIndex].voxels.Length * 12) + (chunk.lods[lodIndex].width * 8)];
+            Vector2[] uvs = new Vector2[(chunk.lods[lodIndex].voxels.Length * 12) + (chunk.lods[lodIndex].width * 8)];
 
             // Chunk data buffers
             ComputeBuffer chunkVoxelBuffer = new ComputeBuffer(chunk.lods[lodIndex].voxels.Length, sizeVoxel);
@@ -148,8 +144,12 @@ namespace VoxelTerrain {
             // Mesh data buffers
             ComputeBuffer vertsBuffer = new ComputeBuffer(verts.Length, sizeVector3);
             ComputeBuffer trisBuffer = new ComputeBuffer(tris.Length, sizeof(int));
+            ComputeBuffer normalsBuffer = new ComputeBuffer(normals.Length, sizeVector3);
+            ComputeBuffer uvsBuffer = new ComputeBuffer(uvs.Length, sizeVector2);
             vertsBuffer.SetData(verts);
             trisBuffer.SetData(tris);
+            normalsBuffer.SetData(normals);
+            uvsBuffer.SetData(uvs);
 
             meshGenerator.SetFloat("voxelSize", voxelWidth);
             meshGenerator.SetInt("chunkWidth", chunk.lods[lodIndex].width);
@@ -158,6 +158,8 @@ namespace VoxelTerrain {
 
             meshGenerator.SetBuffer(0, "verts", vertsBuffer);
             meshGenerator.SetBuffer(0, "tris", trisBuffer);
+            meshGenerator.SetBuffer(0, "normals", normalsBuffer);
+            meshGenerator.SetBuffer(0, "uvs", uvsBuffer);
 
             // Run computation
             meshGenerator.Dispatch(0, chunk.lods[lodIndex].width / 8, chunk.lods[lodIndex].width / 8, 1);
@@ -165,7 +167,8 @@ namespace VoxelTerrain {
             // Read back data
             vertsBuffer.GetData(verts);
             trisBuffer.GetData(tris);
-
+            normalsBuffer.GetData(normals);
+            uvsBuffer.GetData(uvs);
 
             // Use Data
             meshes[lodIndex].Clear();
@@ -173,7 +176,8 @@ namespace VoxelTerrain {
             meshes[lodIndex].name = $"Chunk {chunk.gridPosition} LOD {lodIndex}";
             meshes[lodIndex].triangles = new int[chunk.lods[lodIndex].voxels.Length * 18];
             meshes[lodIndex].triangles = tris;
-            meshes[lodIndex].RecalculateNormals();
+            meshes[lodIndex].normals = normals;
+            meshes[lodIndex].SetUVs(0, uvs);
 
             bounds = new Bounds(transform.position + (meshes[lodIndex].bounds.max / 2), (meshes[lodIndex].bounds.max - meshes[lodIndex].bounds.min));
 
@@ -181,6 +185,8 @@ namespace VoxelTerrain {
             chunkVoxelBuffer.Dispose();
             vertsBuffer.Dispose();
             trisBuffer.Dispose();
+            normalsBuffer.Dispose();
+            uvsBuffer.Dispose();
 
             Profiler.EndSample();
             return true;
@@ -190,6 +196,30 @@ namespace VoxelTerrain {
         {
             Gizmos.color = Color.green;
             Gizmos.DrawWireCube(bounds.center, bounds.size);
+
+            
+            /*
+            if (chunk.lods != null) {
+                if (chunk.lods.Count != 0) {
+                    if (chunk.lods[lodIndex] != null) {
+                        if (chunk.lods[lodIndex].voxels.Length != 0) {
+                            foreach (var voxel in chunk.lods[lodIndex].voxels) {
+                                Vector3 vPos = (new Vector3(voxel.x * TerrainManager.instance.grid.voxelSize, voxel.height, voxel.y * TerrainManager.instance.grid.voxelSize) + transform.position);
+
+                                Gizmos.color = Color.green;
+                                Gizmos.DrawSphere(vPos, TerrainManager.instance.grid.voxelSize / 4);
+
+                                //Gizmos.color = Color.blue;
+                                //Debug.DrawRay(vPos, voxel.normalNorth, Color.blue);
+                                Debug.DrawRay(vPos, voxel.normalSouth, Color.yellow);
+                                //Debug.DrawRay(vPos, voxel.normalEast, Color.red);
+                                Debug.DrawRay(vPos, voxel.normalWest, Color.green);
+                            }
+                        }
+                    }
+                }
+            }*/
+            
 
             /*
             Gizmos.color = Color.blue;
