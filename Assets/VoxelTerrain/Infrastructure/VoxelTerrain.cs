@@ -73,50 +73,65 @@ namespace VoxelTerrain {
         public class PerlinTerrainGenerator : Generator {
             new public Dictionary<JobHandle, PerlinTerrainGeneratorJob> runningJobs;
 
-            public int minHeight;
-            public int maxHeight;
-            public float2 generatorNoiseScale;
-            public float2 heightNormalNoiseScale;
-            public float heightNormalIntensity;
+            public Biome[] biomes;
             public int seed;
+            public Vector2 temperatureNoiseScale;
+            public Vector2 moistureNoiseScale;
+            public Vector2 biomeNoiseScaleNormal;
 
             public PerlinTerrainGenerator(
-                int minHeight,
-                int maxHeight,
                 int seed,
-                int chunkWidth = 64,
-                float2 generatorNoiseScale = default,
-                float2 heightNormalNoiseScale = default,
-                float heightNormalIntensity = 1
+                Biome[] biomes,
+                Vector2 temperatureNoiseScale,
+                Vector2 moistureNoiseScale,
+                Vector2 biomeNoiseScaleNormal,
+                int chunkWidth = 64
              ) {
                 this.chunkWidth = chunkWidth;
-                this.minHeight = minHeight;
-                this.maxHeight = maxHeight;
                 this.seed = seed;
-                this.generatorNoiseScale = generatorNoiseScale;
-                this.heightNormalNoiseScale = heightNormalNoiseScale;
-                this.heightNormalIntensity = heightNormalIntensity;
+                this.biomes = biomes;
+                this.temperatureNoiseScale = temperatureNoiseScale;
+                this.moistureNoiseScale = moistureNoiseScale;
+                this.biomeNoiseScaleNormal = biomeNoiseScaleNormal;
 
                 runningJobs = new Dictionary<JobHandle, PerlinTerrainGeneratorJob>();
+            }
+            public float GetTemperature(float x, float y, int stride = 1)
+            {
+                float tempx = math.clamp((x * stride + seed) * temperatureNoiseScale.x, -float.MaxValue, float.MaxValue);
+                float tempy = math.clamp((y * stride + seed) * temperatureNoiseScale.y, -float.MaxValue, float.MaxValue);
+                //float normal = Mathf.PerlinNoise((x * stride + seed) * biomeNoiseScaleNormal.x, (y * stride + seed) * biomeNoiseScaleNormal.y);
+                float temperature = Mathf.PerlinNoise(tempx * biomeNoiseScaleNormal.x, tempy * biomeNoiseScaleNormal.y);
+
+                return Mathf.Clamp(temperature, 0f, 1f);
+            }
+
+            public float GetMoisture(float x, float y, int stride = 1)
+            {
+                float moisx = math.clamp((x * stride + seed) * moistureNoiseScale.x, -float.MaxValue, float.MaxValue);
+                float moisy = math.clamp((y * stride + seed) * moistureNoiseScale.y, -float.MaxValue, float.MaxValue);
+                float moisture = Mathf.PerlinNoise(moisx * biomeNoiseScaleNormal.x, moisy * biomeNoiseScaleNormal.y);
+
+                return Mathf.Clamp(moisture, 0f, 1f);
             }
 
             public override void QueueChunk(Chunk chunk)
             {
                 int lodWidth = chunk.chunkWidth;
+
                 for (int i = 0; lodWidth >= 8 ; i++)
                 {
                     PerlinTerrainGeneratorJob job = new PerlinTerrainGeneratorJob
                     {
                         chunkData = new NativeArray<Voxel>(new Voxel[lodWidth * lodWidth], Allocator.Persistent),
-                        minChunkHeight = minHeight,
-                        maxChunkHeight = maxHeight,
+                        biomes = new NativeArray<Biome>(biomes, Allocator.Persistent),
+                        temperatureNoiseScale = new float2(temperatureNoiseScale.x, temperatureNoiseScale.y),
+                        moistureNoiseScale = new float2(moistureNoiseScale.x, moistureNoiseScale.y),
+                        biomeNoiseScaleNormal = biomeNoiseScaleNormal,
                         chunkWidth = chunkWidth,
                         lodWidth = lodWidth,
                         lodIndex = i,
                         chunkPosition = chunk.gridPosition,
-                        generatorNoiseScale = new float2(generatorNoiseScale.x, generatorNoiseScale.y),
-                        heightNormalNoiseScale = new float2(heightNormalNoiseScale.x, heightNormalNoiseScale.y),
-                        heightNormalIntensity = heightNormalIntensity,
                         seed = seed
                     };
 
@@ -179,6 +194,7 @@ namespace VoxelTerrain {
 
                 ResolveJob(closest, onChunkComplete);
                 runningJobs[closest].chunkData.Dispose();
+                runningJobs[closest].biomes.Dispose();
                 runningJobs.Remove(closest);
             }
 
@@ -195,6 +211,7 @@ namespace VoxelTerrain {
                     );
 
                     process.Value.chunkData.Dispose();
+                    process.Value.biomes.Dispose();
                 }
 
                 runningJobs.Clear();
@@ -206,6 +223,7 @@ namespace VoxelTerrain {
                     process.Key.Complete();
 
                     process.Value.chunkData.Dispose();
+                    process.Value.biomes.Dispose();
                 }
 
                 runningJobs.Clear();
@@ -215,27 +233,26 @@ namespace VoxelTerrain {
         [BurstCompile]
         public struct PerlinTerrainGeneratorJob : IJobParallelFor {
             public NativeArray<Voxel> chunkData;
+            public NativeArray<Biome> biomes;
+            public float2 temperatureNoiseScale;
+            public float2 moistureNoiseScale;
+            public float2 biomeNoiseScaleNormal;
             public int chunkWidth;
             public int lodWidth;
             public int lodIndex;
-            public int minChunkHeight;
-            public int maxChunkHeight;
-            public float2 generatorNoiseScale;
-            public float2 heightNormalNoiseScale;
-            public float heightNormalIntensity;
             public int seed;
 
             public int2 chunkPosition;
 
-            private float GetHeightAtPosition(float x, float y) {
+            private float GetHeightAtPosition(Biome biome, float x, float y) {
                 int stride = Mathf.Max(1, chunkWidth / lodWidth);
 
-                float heightNormal = Noise(x, y, stride, chunkPosition * chunkWidth, heightNormalNoiseScale) * heightNormalIntensity;
-                heightNormal = math.remap(-1, 1, 0, 1, heightNormal);
+                float heightNormal = Noise(x, y, biome.persistance, biome.lancunarity, stride, chunkPosition * chunkWidth, biome.heightNormalNoiseScale, biome.octaves);
+                heightNormal = math.remap(-1, 1, 0, biome.heightNormalIntensity, heightNormal);
 
-                float fHeight = Noise(x, y, stride, chunkPosition * chunkWidth, generatorNoiseScale) * heightNormal;
+                float fHeight = Noise(x, y, biome.persistance, biome.lancunarity, stride, chunkPosition * chunkWidth, biome.generatorNoiseScale, biome.octaves) * heightNormal;
 
-                fHeight = math.remap(-1, 1, minChunkHeight, maxChunkHeight, fHeight);
+                fHeight = math.remap(-1, 1, biome.minTerrainHeight, biome.maxTerrainHeight, fHeight);
                 return fHeight;
             }
 
@@ -243,34 +260,120 @@ namespace VoxelTerrain {
                 Voxel voxel = chunkData[voxelId];
                 voxel.x = voxelId % lodWidth;
                 voxel.y = voxelId / lodWidth;
+                int stride = Mathf.Max(1, chunkWidth / lodWidth);
 
-                voxel.height = (int) GetHeightAtPosition(voxel.x, voxel.y);
-                int northHeight = (int) GetHeightAtPosition(voxel.x, voxel.y + 1);
+                float temperature = GetTemperature(voxel.x, voxel.y, stride);
+                float moisture = GetMoisture(voxel.x, voxel.y, stride);
+                float northTemperature = GetTemperature(voxel.x, voxel.y + 1, stride);
+                float northMoisture = GetMoisture(voxel.x, voxel.y + 1, stride);
+                float southTemperature = GetTemperature(voxel.x, voxel.y - 1, stride);
+                float southMoisture = GetMoisture(voxel.x, voxel.y - 1, stride);
+                float eastTemperature = GetTemperature(voxel.x + 1, voxel.y, stride);
+                float eastMoisture = GetMoisture(voxel.x + 1, voxel.y, stride);
+                float westTemperature = GetTemperature(voxel.x - 1, voxel.y, stride);
+                float westMoisture = GetMoisture(voxel.x - 1, voxel.y, stride);
+
+                float tempHeight = 0;
+                float northHeight = 0;
+                float southHeight = 0;
+                float eastHeight = 0;
+                float westHeight = 0;
+                float weight = 0;
+                float northWeight = 0;
+                float southWeight = 0;
+                float eastWeight = 0;
+                float westWeight = 0;
+
+                if (biomes.Length == 0) {
+                    Debug.Log("No biomes to execute on");
+                    return;
+                }
+
+                foreach (Biome biome in biomes)
+                {
+                    tempHeight += (GetHeightAtPosition(biome, voxel.x, voxel.y) * biome.idealness(temperature, moisture));
+                    northHeight += (GetHeightAtPosition(biome, voxel.x, voxel.y + 1) * biome.idealness(northTemperature, northMoisture));
+                    southHeight += (GetHeightAtPosition(biome, voxel.x, voxel.y - 1) * biome.idealness(southTemperature, southMoisture));
+                    eastHeight += (GetHeightAtPosition(biome, voxel.x + 1, voxel.y) * biome.idealness(eastTemperature, eastMoisture));
+                    westHeight += (GetHeightAtPosition(biome, voxel.x - 1, voxel.y) * biome.idealness(westTemperature, westMoisture));
+
+                    weight += biome.idealness(temperature, moisture);
+                    northWeight += biome.idealness(northTemperature, northMoisture);
+                    southWeight += biome.idealness(southTemperature, southMoisture);
+                    eastWeight += biome.idealness(eastTemperature, eastMoisture);
+                    westWeight += biome.idealness(westTemperature, westMoisture);
+                }
+
+                voxel.height = (int) (tempHeight / weight);
+                northHeight = (northHeight / northWeight);
+                southHeight = (southHeight / southWeight);
+                eastHeight = (eastHeight / eastWeight);
+                westHeight = (westHeight / westWeight);
+
                 float3 northHeading = (new float3(voxel.x, northHeight, voxel.y + 1)) - (new float3(voxel.x, voxel.height, voxel.y));
                 voxel.normalNorth = voxel.height == northHeight ? new float3(0, 1, 0) : math.normalizesafe(math.cross(new float3(-1, 0, 0), northHeading));
 
-                int southHeight = (int)GetHeightAtPosition(voxel.x, voxel.y - 1);
                 float3 southHeading =  (new float3(voxel.x, southHeight, voxel.y - 1)) - (new float3(voxel.x, voxel.height, voxel.y));
                 voxel.normalSouth = voxel.height == southHeight ? new float3(0, 1, 0) : math.normalizesafe(math.cross(new float3(1, 0, 0), southHeading));
 
-                int eastHeight = (int)GetHeightAtPosition(voxel.x + 1, voxel.y);
                 float3 eastHeading =  (new float3(voxel.x + 1, eastHeight, voxel.y)) - (new float3(voxel.x, voxel.height, voxel.y));
                 voxel.normalEast =voxel.height == eastHeight ? new float3(0, 1, 0) : math.normalizesafe(math.cross(new float3(0, 0, 1), eastHeading));
 
-                int westHeight = (int)GetHeightAtPosition(voxel.x - 1, voxel.y);
                 float3 westHeading =  (new float3(voxel.x - 1, westHeight, voxel.y)) - (new float3(voxel.x, voxel.height, voxel.y));
                 voxel.normalWest =voxel.height == westHeight ? new float3(0, 1, 0) : math.normalizesafe(math.cross(new float3(0, 0, -1), westHeading));
 
                 chunkData[voxelId] = voxel;
             }
 
-            public float Noise(float x, float y, int stride = 1, float2 offset = default, float2 scale = default)
+            public float GetTemperature(float x, float y, int stride = 1)
             {
-                float2 pos = new float2(x * stride + Mathf.PI + seed, y * stride + Mathf.PI + seed) + offset;
-                if (scale.ToVector2() != Vector2.zero)
-                    pos *= scale;
-                return math.remap(0, 1, -1, 1, Mathf.PerlinNoise(pos.x, pos.y));
-                //return noise.cnoise(pos);
+                float tempx = math.clamp((x * stride + seed) * temperatureNoiseScale.x, -float.MaxValue, float.MaxValue);
+                float tempy = math.clamp((y * stride + seed) * temperatureNoiseScale.y, -float.MaxValue, float.MaxValue);
+                //float normal = Mathf.PerlinNoise((x * stride + seed) * biomeNoiseScaleNormal.x, (y * stride + seed) * biomeNoiseScaleNormal.y);
+                float temperature = Mathf.PerlinNoise(tempx * biomeNoiseScaleNormal.x, tempy * biomeNoiseScaleNormal.y);
+
+                return Mathf.Clamp(temperature, 0f, 1f);
+            }
+
+            public float GetMoisture(float x, float y, int stride = 1)
+            {
+                float moisx = math.clamp((x * stride + seed) * moistureNoiseScale.x, -float.MaxValue, float.MaxValue);
+                float moisy = math.clamp((y * stride + seed) * moistureNoiseScale.y, -float.MaxValue, float.MaxValue);
+                float moisture = Mathf.PerlinNoise(moisx * biomeNoiseScaleNormal.x, moisy * biomeNoiseScaleNormal.y);
+
+                return Mathf.Clamp(moisture, 0f, 1f);
+            }
+
+            public float Noise(float x, float y, float persistance, float lancunarity, int stride = 1, float2 offset = default, float2 scale = default, int octaves = 1)
+            {
+                
+                System.Random rand = new System.Random(seed);
+
+                if (scale.x == 0) {
+                    scale.x = 0.00001f;
+                } else if (scale.y == 0) {
+                    scale.y = 0.00001f;
+                }
+
+                float amplitude = 1;
+                float frequency = 1;
+                float noiseHeight = 0;
+
+                for (int i = 0; i < octaves; i++) {
+                    float2 octOffset = offset + new float2(rand.Next(-100000, 100000), rand.Next(-100000, 100000));
+                    float2 sample = new float2(
+                        (x * stride) / scale.x * frequency + octOffset.x,
+                        (y * stride) / scale.y * frequency + octOffset.y
+                    );
+
+                    float perlinValue = noise.cnoise(sample);
+                    noiseHeight += perlinValue * amplitude;
+
+                    amplitude *= persistance;
+                    frequency *= lancunarity;
+                }
+
+                return noiseHeight;
             }
         }
     }

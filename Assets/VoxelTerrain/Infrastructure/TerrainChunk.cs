@@ -61,6 +61,16 @@ namespace VoxelTerrain {
         }
 
         private void DetectLod() {
+            if (meshCollider.sharedMesh == null) {
+                if (meshes.ContainsKey(colliderLodIndex))
+                {
+                    if (meshCollider.sharedMesh != meshes[colliderLodIndex])
+                    {
+                        meshCollider.sharedMesh = meshes[colliderLodIndex];
+                    }
+                }
+            }
+
             if (!gameCamera) {
                 ChangeLod(TerrainManager.instance.lodRanges.Count - 1);
                 return;
@@ -97,17 +107,10 @@ namespace VoxelTerrain {
 
                 meshFilter.sharedMesh = meshes[lodIndex];
             }
-
-            if (meshes.ContainsKey(colliderLodIndex)) {
-                if (meshCollider.sharedMesh != meshes[colliderLodIndex]) {
-                    meshCollider.sharedMesh = meshes[colliderLodIndex];
-                }
-            }
         }
 
         public void SetChunk(Chunk chunk, bool reRender = true) {
             this.chunk = chunk;
-
 
             transform.position = new Vector3(chunk.gridPosition.x, 0f, chunk.gridPosition.y) * (chunk.grid.voxelSize * chunk.chunkWidth);
         }

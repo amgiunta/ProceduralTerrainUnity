@@ -5,6 +5,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 using UnityEngine;
 using UnityEngine.Events;
 using Unity.Mathematics;
+using TMPro;
 using VoxelTerrain.Generators;
 using UnityEngine.Profiling;
 
@@ -14,17 +15,22 @@ namespace VoxelTerrain
     {
         public static TerrainManager instance;
 
+        public TMP_Text temperatureReadout;
+        public TMP_Text moistureReadout;
+        public TMP_Text idealBiomeReadout;
+
         public string worldName = "NewWorld";
         public Grid grid;
 
         public float generatorFrequency = 0.02f;
-        [Min(1)] public int seed = 0;
-        [Range(-512, 512)] public int minTerrainHeight = 0;
-        [Range(-512, 512)] public int maxTerrainHeight = 64;
-        public Vector2 generatorNoiseScale;
-        public Vector2 heightNormalNoiseScale;
-        [Range(0,1)] public float heightNormalIntensity;
-        [Range(1, 50)] public float renderDistance;
+        [Min(1)] public int seed = 0;        
+
+        public List<BiomeObject> biomes;
+        public Vector2 temperatureNoiseScale;
+        public Vector2 moistureNoiseScale;
+        public Vector2 biomeNoiseScaleNormal;
+
+        [Range(1, 500)] public float renderDistance;
         public List<float> lodRanges;
 
         public UnityEvent OnStartGeneration;
@@ -36,15 +42,20 @@ namespace VoxelTerrain
 
         private PerlinTerrainGenerator generator {
             get {
+                Biome[] biomeStructs = new Biome[biomes.Count];
+
+                for (int i = 0; i < biomes.Count; i++) {
+                    biomeStructs[i] = biomes[i];
+                }
+
                 if (_generator == null) {
                     _generator = new PerlinTerrainGenerator(
-                        minTerrainHeight, 
-                        maxTerrainHeight, 
-                        seed, 
-                        grid.chunkSize,
-                        generatorNoiseScale,
-                        heightNormalNoiseScale,
-                        heightNormalIntensity
+                        seed,
+                        biomeStructs,
+                        temperatureNoiseScale,
+                        moistureNoiseScale,
+                        biomeNoiseScaleNormal,
+                        grid.chunkSize
                     );
                 }
                 return _generator;
@@ -86,6 +97,24 @@ namespace VoxelTerrain
             if (PlayerController.instance) {
                 LoadChunks(PlayerController.instance.gridPosition);
             }
+
+            float temperature = generator.GetTemperature(PlayerController.instance.transform.position.x, PlayerController.instance.transform.position.z);
+            float moisture = generator.GetMoisture(PlayerController.instance.transform.position.x, PlayerController.instance.transform.position.z);
+            float idealBiomeIdealness = 0;
+            BiomeObject idealBiome = biomes[0];
+
+            foreach (BiomeObject biome in biomes) {
+                float idealness = biome.idealness(temperature, moisture);
+                if (idealness > idealBiomeIdealness) {
+                    idealBiomeIdealness = idealness;
+                    idealBiome = biome;
+                }
+                Debug.Log($"Biome: {biome.name} Idealness: {idealness}");
+            }
+
+            temperatureReadout.text = "Temperature: " + temperature;
+            moistureReadout.text = "Moisture: " + moisture;
+            idealBiomeReadout.text = $"Biome: {idealBiome.name} %{idealBiomeIdealness * 100}";
         }
 
         private void FixedUpdate()
