@@ -22,11 +22,17 @@ namespace VoxelTerrain
         public float lancunarity;
         [Range(1, 20)] public int octaves;
 
+        public Biome biomeProperties {
+            get {
+                return this;
+            }
+        }
+
         public float idealTemperature
         {
             get
             {
-                return minTemperature + ((maxTemperature - minTemperature) / 2);
+                return biomeProperties.idealTemperature;
             }
         }
 
@@ -34,19 +40,13 @@ namespace VoxelTerrain
         {
             get
             {
-                return minMoisture + ((maxMoisture - minMoisture) / 2);
+                return biomeProperties.idealMoisture;
             }
         }
 
         public float idealness(float temperature, float moisture)
         {
-            float tempDistance = math.abs(temperature - idealTemperature);
-            float moisDistance = math.abs(moisture - idealMoisture);
-
-            float tempIdealness = math.clamp(math.remap(maxTemperature - minTemperature, 0f, 0f, 1f, tempDistance), 0, 1);
-            float moisIdealness = math.clamp(math.remap(maxMoisture - minMoisture, 0f, 0f, 1f, moisDistance), 0, 1);
-
-            return tempIdealness * moisIdealness;
+            return biomeProperties.idealness(temperature, moisture);
         }
     }
 
