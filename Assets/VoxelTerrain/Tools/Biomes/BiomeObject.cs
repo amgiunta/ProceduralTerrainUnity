@@ -44,9 +44,9 @@ namespace VoxelTerrain
             }
         }
 
-        public float idealness(float temperature, float moisture)
+        public float Idealness(float temperature, float moisture)
         {
-            return biomeProperties.idealness(temperature, moisture);
+            return biomeProperties.Idealness(temperature, moisture);
         }
     }
 
@@ -104,7 +104,7 @@ namespace VoxelTerrain
             }
         }
 
-        public float idealness(float temperature, float moisture)
+        public float Idealness(float temperature, float moisture)
         {
             float tempDistance = math.abs(temperature - idealTemperature);
             float moisDistance = math.abs(moisture - idealMoisture);
@@ -113,6 +113,42 @@ namespace VoxelTerrain
             float moisIdealness = math.clamp(math.remap(maxMoisture - minMoisture, 0f, 0f, 1f, moisDistance), 0, 1);
 
             return tempIdealness * moisIdealness;
+        }
+
+        public float Noise(float x, float y, float persistance, float lancunarity, int stride = 1, float2 offset = default, float2 scale = default, int octaves = 1, int seed = 0)
+        {
+
+            System.Random rand = new System.Random(seed);
+
+            if (scale.x == 0)
+            {
+                scale.x = 0.00001f;
+            }
+            else if (scale.y == 0)
+            {
+                scale.y = 0.00001f;
+            }
+
+            float amplitude = 1;
+            float frequency = 1;
+            float noiseHeight = 0;
+
+            for (int i = 0; i < octaves; i++)
+            {
+                float2 octOffset = offset + new float2(rand.Next(-100000, 100000), rand.Next(-100000, 100000));
+                float2 sample = new float2(
+                    (x * stride) / scale.x * frequency + octOffset.x,
+                    (y * stride) / scale.y * frequency + octOffset.y
+                );
+
+                float perlinValue = noise.cnoise(sample);
+                noiseHeight += perlinValue * amplitude;
+
+                amplitude *= persistance;
+                frequency *= lancunarity;
+            }
+
+            return noiseHeight;
         }
     }
 }

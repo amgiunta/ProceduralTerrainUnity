@@ -104,7 +104,7 @@ namespace VoxelTerrain
             BiomeObject idealBiome = biomes[0];
 
             foreach (BiomeObject biome in biomes) {
-                float idealness = biome.idealness(temperature, moisture);
+                float idealness = biome.Idealness(temperature, moisture);
                 if (idealness > idealBiomeIdealness) {
                     idealBiomeIdealness = idealness;
                     idealBiome = biome;
