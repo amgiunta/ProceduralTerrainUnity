@@ -60,7 +60,16 @@ public class PlayerController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
+        if (PlayerController.instance)
+        {
+            TerrainManager.instance.LoadChunks(PlayerController.instance.gridPosition);
+        }
+    }
+
+    private void LateUpdate()
+    {
+
+        TerrainManager.instance.ResolveChunks(gridPosition);
     }
 
     private void FixedUpdate()

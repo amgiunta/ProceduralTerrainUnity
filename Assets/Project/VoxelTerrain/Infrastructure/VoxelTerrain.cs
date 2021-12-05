@@ -6,6 +6,7 @@ using Unity.Burst;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Profiling;
 
 namespace VoxelTerrain {
     [System.Serializable]
@@ -178,6 +179,7 @@ namespace VoxelTerrain {
 
             public virtual void ResolveClosestJob(int2 point, chunkProcessCallback onChunkComplete) {
                 if (runningJobs.Count == 0) { return; }
+                Profiler.BeginSample("Resolve Closest Job");
 
                 JobHandle closest = runningJobs.First().Key;
                 int2 closestPosition = runningJobs[closest].chunkPosition;
@@ -185,6 +187,7 @@ namespace VoxelTerrain {
                 foreach (var process in runningJobs) {
                     int2 position = process.Value.chunkPosition;
                     float distance = math.distance(position, point);
+                    int lod = process.Value.lodIndex;
                     if (distance < closestDistance) {
                         closestDistance = distance;
                         closestPosition = position;
@@ -196,6 +199,8 @@ namespace VoxelTerrain {
                 runningJobs[closest].chunkData.Dispose();
                 runningJobs[closest].biomes.Dispose();
                 runningJobs.Remove(closest);
+
+                Profiler.EndSample();
             }
 
             public override void ResolveJobs(chunkProcessCallback onChunkComplete)
@@ -230,7 +235,7 @@ namespace VoxelTerrain {
             }
         }
 
-        [BurstCompile]
+        [BurstCompile(Debug = true)]
         public struct PerlinTerrainGeneratorJob : IJobParallelFor {
             public NativeArray<Voxel> chunkData;
             public NativeArray<Biome> biomes;
@@ -247,16 +252,14 @@ namespace VoxelTerrain {
             private float GetHeightAtPosition(Biome biome, float x, float y) {
                 int stride = Mathf.Max(1, chunkWidth / lodWidth);
 
-                float heightNormal = biome.Noise(x, y, biome.persistance, biome.lancunarity, stride, chunkPosition * chunkWidth, biome.heightNormalNoiseScale, biome.octaves, seed);
-                heightNormal = math.remap(-1, 1, 0, biome.heightNormalIntensity, heightNormal);
-
-                float fHeight = biome.Noise(x, y, biome.persistance, biome.lancunarity, stride, chunkPosition * chunkWidth, biome.generatorNoiseScale, biome.octaves, seed) * heightNormal;
+                float fHeight = Biome.Noise(x, y, biome.persistance, biome.lancunarity, stride, chunkPosition * chunkWidth, biome.generatorNoiseScale, biome.octaves, seed) /* heightNormal*/;
 
                 fHeight = math.remap(-1, 1, biome.minTerrainHeight, biome.maxTerrainHeight, fHeight);
                 return fHeight;
             }
 
             public void Execute(int voxelId) {
+
                 Voxel voxel = chunkData[voxelId];
                 voxel.x = voxelId % lodWidth;
                 voxel.y = voxelId / lodWidth;
@@ -337,6 +340,7 @@ namespace VoxelTerrain {
 
             public float GetMoisture(float x, float y, int stride = 1)
             {
+
                 float moisx = math.clamp((x * stride + seed) * moistureNoiseScale.x, -float.MaxValue, float.MaxValue);
                 float moisy = math.clamp((y * stride + seed) * moistureNoiseScale.y, -float.MaxValue, float.MaxValue);
                 float moisture = Mathf.PerlinNoise(moisx * biomeNoiseScaleNormal.x, moisy * biomeNoiseScaleNormal.y);

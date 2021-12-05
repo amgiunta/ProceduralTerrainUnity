@@ -5,7 +5,6 @@ using System.Runtime.Serialization.Formatters.Binary;
 using UnityEngine;
 using UnityEngine.Events;
 using Unity.Mathematics;
-using TMPro;
 using VoxelTerrain.Generators;
 using UnityEngine.Profiling;
 
@@ -14,10 +13,6 @@ namespace VoxelTerrain
     public class TerrainManager : MonoBehaviour
     {
         public static TerrainManager instance;
-
-        public TMP_Text temperatureReadout;
-        public TMP_Text moistureReadout;
-        public TMP_Text idealBiomeReadout;
 
         public string worldName = "NewWorld";
         public Grid grid;
@@ -87,52 +82,22 @@ namespace VoxelTerrain
 
         private void OnDisable()
         {
-            //SaveWorld();
-            generator?.DisposeJobs();
         }
 
         // Update is called once per frame
         void Update()
         {
-            if (PlayerController.instance) {
-                LoadChunks(PlayerController.instance.gridPosition);
-            }
-
-            float temperature = generator.GetTemperature(PlayerController.instance.transform.position.x, PlayerController.instance.transform.position.z);
-            float moisture = generator.GetMoisture(PlayerController.instance.transform.position.x, PlayerController.instance.transform.position.z);
-            float idealBiomeIdealness = 0;
-            BiomeObject idealBiome = biomes[0];
-
-            foreach (BiomeObject biome in biomes) {
-                float idealness = biome.Idealness(temperature, moisture);
-                if (idealness > idealBiomeIdealness) {
-                    idealBiomeIdealness = idealness;
-                    idealBiome = biome;
-                }
-                Debug.Log($"Biome: {biome.name} Idealness: {idealness}");
-            }
-
-            temperatureReadout.text = "Temperature: " + temperature;
-            moistureReadout.text = "Moisture: " + moisture;
-            idealBiomeReadout.text = $"Biome: {idealBiome.name} %{idealBiomeIdealness * 100}";
+            
         }
 
         private void FixedUpdate()
         {
-            
-        }
-
-        private void LateUpdate()
-        {
             elapsedTime += Time.fixedDeltaTime;
-            if (elapsedTime - lastUpdate > generatorFrequency)
-            {
-                generator?.ResolveClosestJob(PlayerController.instance.gridPosition, UpdateChunkObject);
-                lastUpdate = elapsedTime;
-            }
-        }
+        }        
 
         public void LoadChunks(int2 gridPosition) {
+            if (elapsedTime - lastUpdate < generatorFrequency) { return; }
+
             Profiler.BeginSample("Generate Chunk Data");
 
             int x = 0;
@@ -165,6 +130,14 @@ namespace VoxelTerrain
             }
 
             Profiler.EndSample();
+        }
+
+        public void ResolveChunks(int2 gridPosition) {
+            if (elapsedTime - lastUpdate > generatorFrequency)
+            {
+                generator?.ResolveClosestJob(gridPosition, UpdateChunkObject);
+                lastUpdate = elapsedTime;
+            }
         }
 
         public void StartGenerator() {
