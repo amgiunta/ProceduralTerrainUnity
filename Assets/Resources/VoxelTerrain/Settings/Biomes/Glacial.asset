@@ -10,14 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 375302bfdbbccb34ca2e5f3758292ccf, type: 3}
-  m_Name: Ilands
+  m_Name: Glacial
   m_EditorClassIdentifier: 
-  maxTemperature: 1
-  minTemperature: 0.6
+  maxTemperature: 0.124
+  minTemperature: 0
   maxMoisture: 1
-  minMoisture: 0.67
-  heightNormalIntensity: 0.44
-  minTerrainHeight: -50
-  maxTerrainHeight: 50
-  generatorNoiseScale: {x: 0.008123, y: 0.008123}
-  heightNormalNoiseScale: {x: 0.005, y: 0.005}
+  minMoisture: 0
+  heightNormalIntensity: 0.56
+  minTerrainHeight: 50
+  maxTerrainHeight: 100
+  generatorNoiseScale: {x: 500, y: 50}
+  heightNormalNoiseScale: {x: 0.0065, y: 0.03}
+  persistance: 0.5
+  lancunarity: 3.2
+  octaves: 4

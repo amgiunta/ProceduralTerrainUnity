@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Profiling;
+using Unity.Mathematics;
 
 namespace VoxelTerrain {
 
@@ -116,17 +117,17 @@ namespace VoxelTerrain {
         }
 
         public bool GenerateChunkMesh(int lodIndex) {
-            Profiler.BeginSample("Generate Chunk Mesh");
+            if (!chunk.lods.ContainsKey(lodIndex)) {
+                return false;
+            }
 
+            Profiler.BeginSample("Generate Chunk Mesh");
+            Profiler.BeginSample("Initialize Chunk Mesh");
             // Initializations
             int sizeVector3 = sizeof(float) * 3;
             int sizeVector2 = sizeof(float) * 2;
             int sizeVoxel = (sizeof(int) * 3) + (sizeVector3 * 4);
 
-            if (!chunk.lods.ContainsKey(lodIndex)) {
-                Profiler.EndSample();
-                return false;
-            }
 
             if (!meshes.ContainsKey(lodIndex))
             {
@@ -135,10 +136,10 @@ namespace VoxelTerrain {
 
             float voxelWidth = (chunk.grid.voxelSize * (chunk.chunkWidth / chunk.lods[lodIndex].width));
 
-            Vector3[] verts = new Vector3[(chunk.lods[lodIndex].voxels.Length * 12) + (chunk.lods[lodIndex].width * 8)];
+            float3[] verts = new float3[(chunk.lods[lodIndex].voxels.Length * 12) + (chunk.lods[lodIndex].width * 8)];
             int[] tris = new int[(chunk.lods[lodIndex].voxels.Length * 18) + (chunk.lods[lodIndex].width * 12)];
-            Vector3[] normals = new Vector3[(chunk.lods[lodIndex].voxels.Length * 12) + (chunk.lods[lodIndex].width * 8)];
-            Vector2[] uvs = new Vector2[(chunk.lods[lodIndex].voxels.Length * 12) + (chunk.lods[lodIndex].width * 8)];
+            float3[] normals = new float3[(chunk.lods[lodIndex].voxels.Length * 12) + (chunk.lods[lodIndex].width * 8)];
+            float2[] uvs = new float2[(chunk.lods[lodIndex].voxels.Length * 12) + (chunk.lods[lodIndex].width * 8)];
 
             // Chunk data buffers
             ComputeBuffer chunkVoxelBuffer = new ComputeBuffer(chunk.lods[lodIndex].voxels.Length, sizeVoxel);
@@ -163,10 +164,14 @@ namespace VoxelTerrain {
             meshGenerator.SetBuffer(0, "tris", trisBuffer);
             meshGenerator.SetBuffer(0, "normals", normalsBuffer);
             meshGenerator.SetBuffer(0, "uvs", uvsBuffer);
+            Profiler.EndSample();
 
+            Profiler.BeginSample("Generate Mesh");
             // Run computation
             meshGenerator.Dispatch(0, chunk.lods[lodIndex].width / 8, chunk.lods[lodIndex].width / 8, 1);
+            Profiler.EndSample();
 
+            Profiler.BeginSample("Read Mesh Data");
             // Read back data
             vertsBuffer.GetData(verts);
             trisBuffer.GetData(tris);
@@ -175,21 +180,24 @@ namespace VoxelTerrain {
 
             // Use Data
             meshes[lodIndex].Clear();
-            meshes[lodIndex].SetVertices(verts);
+            meshes[lodIndex].SetVertices(verts.ToVectorArray());
             meshes[lodIndex].name = $"Chunk {chunk.gridPosition} LOD {lodIndex}";
             meshes[lodIndex].triangles = new int[chunk.lods[lodIndex].voxels.Length * 18];
             meshes[lodIndex].triangles = tris;
-            meshes[lodIndex].normals = normals;
-            meshes[lodIndex].SetUVs(0, uvs);
+            meshes[lodIndex].normals = normals.ToVectorArray();
+            meshes[lodIndex].SetUVs(0, uvs.ToVectorArray());
 
             bounds = new Bounds(transform.position + (meshes[lodIndex].bounds.max / 2), (meshes[lodIndex].bounds.max - meshes[lodIndex].bounds.min));
+            Profiler.EndSample();
 
+            Profiler.BeginSample("Dispose Mesh Data");
             // Dispose all buffers
             chunkVoxelBuffer.Dispose();
             vertsBuffer.Dispose();
             trisBuffer.Dispose();
             normalsBuffer.Dispose();
             uvsBuffer.Dispose();
+            Profiler.EndSample();
 
             Profiler.EndSample();
             return true;

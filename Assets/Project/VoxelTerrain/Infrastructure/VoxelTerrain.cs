@@ -79,6 +79,9 @@ namespace VoxelTerrain {
             public Vector2 temperatureNoiseScale;
             public Vector2 moistureNoiseScale;
             public Vector2 biomeNoiseScaleNormal;
+            public float2 randomOffset;
+
+            private System.Random rand;
 
             public PerlinTerrainGenerator(
                 int seed,
@@ -96,6 +99,8 @@ namespace VoxelTerrain {
                 this.biomeNoiseScaleNormal = biomeNoiseScaleNormal;
 
                 runningJobs = new Dictionary<JobHandle, PerlinTerrainGeneratorJob>();
+                rand = new System.Random(seed);
+                randomOffset = new float2(rand.Next(-100000, 100000), rand.Next(-100000, 100000));
             }
             public float GetTemperature(float x, float y, int stride = 1)
             {
@@ -122,6 +127,7 @@ namespace VoxelTerrain {
 
                 for (int i = 0; lodWidth >= 8 ; i++)
                 {
+
                     PerlinTerrainGeneratorJob job = new PerlinTerrainGeneratorJob
                     {
                         chunkData = new NativeArray<Voxel>(new Voxel[lodWidth * lodWidth], Allocator.Persistent),
@@ -133,7 +139,7 @@ namespace VoxelTerrain {
                         lodWidth = lodWidth,
                         lodIndex = i,
                         chunkPosition = chunk.gridPosition,
-                        seed = seed
+                        randomOffset = randomOffset
                     };
 
 
@@ -171,6 +177,7 @@ namespace VoxelTerrain {
                     {
                         ResolveJob(process.Key, onChunkComplete);
                         process.Value.chunkData.Dispose();
+                        process.Value.biomes.Dispose();
                         runningJobs.Remove(process.Key);
                         return;
                     }
@@ -236,6 +243,23 @@ namespace VoxelTerrain {
         }
 
         [BurstCompile(Debug = true)]
+        public struct PerlinGeneratorJobV2 : IJobParallelFor {
+            public NativeArray<NativeArray<float>> noiseMaps;
+            public NativeArray<float2> climateMap;
+            public NativeArray<Biome> biomes;
+            public NativeArray<Voxel> voxels;
+            public int chunkWidth;
+            public int lodWidth;
+            public int lodIndex;
+            public float2 randomOffset;
+            public int2 chunkPosition;
+
+            public void Execute(int heightId) { 
+                
+            }
+        }
+
+        [BurstCompile(Debug = true)]
         public struct PerlinTerrainGeneratorJob : IJobParallelFor {
             public NativeArray<Voxel> chunkData;
             public NativeArray<Biome> biomes;
@@ -245,16 +269,16 @@ namespace VoxelTerrain {
             public int chunkWidth;
             public int lodWidth;
             public int lodIndex;
-            public int seed;
+            public float2 randomOffset;
 
             public int2 chunkPosition;
 
             private float GetHeightAtPosition(Biome biome, float x, float y) {
                 int stride = Mathf.Max(1, chunkWidth / lodWidth);
 
-                float fHeight = Biome.Noise(x, y, biome.persistance, biome.lancunarity, stride, chunkPosition * chunkWidth, biome.generatorNoiseScale, biome.octaves, seed) /* heightNormal*/;
+                float fHeight = TerrainNoise.Noise(x, y, biome.persistance, biome.lancunarity, stride, (chunkPosition + randomOffset) * chunkWidth , biome.generatorNoiseScale, biome.octaves);
 
-                fHeight = math.remap(-1, 1, biome.minTerrainHeight, biome.maxTerrainHeight, fHeight);
+                fHeight = math.remap(-1, 1, biome.minTerrainHeight, biome.maxTerrainHeight, fHeight); 
                 return fHeight;
             }
 
@@ -330,8 +354,8 @@ namespace VoxelTerrain {
 
             public float GetTemperature(float x, float y, int stride = 1)
             {
-                float tempx = math.clamp((x * stride + seed) * temperatureNoiseScale.x, -float.MaxValue, float.MaxValue);
-                float tempy = math.clamp((y * stride + seed) * temperatureNoiseScale.y, -float.MaxValue, float.MaxValue);
+                float tempx = math.clamp((x * stride + randomOffset.x) * temperatureNoiseScale.x, -float.MaxValue, float.MaxValue);
+                float tempy = math.clamp((y * stride + randomOffset.y) * temperatureNoiseScale.y, -float.MaxValue, float.MaxValue);
                 //float normal = Mathf.PerlinNoise((x * stride + seed) * biomeNoiseScaleNormal.x, (y * stride + seed) * biomeNoiseScaleNormal.y);
                 float temperature = Mathf.PerlinNoise(tempx * biomeNoiseScaleNormal.x, tempy * biomeNoiseScaleNormal.y);
 
@@ -341,8 +365,8 @@ namespace VoxelTerrain {
             public float GetMoisture(float x, float y, int stride = 1)
             {
 
-                float moisx = math.clamp((x * stride + seed) * moistureNoiseScale.x, -float.MaxValue, float.MaxValue);
-                float moisy = math.clamp((y * stride + seed) * moistureNoiseScale.y, -float.MaxValue, float.MaxValue);
+                float moisx = math.clamp((x * stride + randomOffset.x) * moistureNoiseScale.x, -float.MaxValue, float.MaxValue);
+                float moisy = math.clamp((y * stride + randomOffset.y) * moistureNoiseScale.y, -float.MaxValue, float.MaxValue);
                 float moisture = Mathf.PerlinNoise(moisx * biomeNoiseScaleNormal.x, moisy * biomeNoiseScaleNormal.y);
 
                 return Mathf.Clamp(moisture, 0f, 1f);

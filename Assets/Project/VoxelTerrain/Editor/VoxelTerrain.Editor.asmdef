@@ -1,6 +1,6 @@
 {
     "name": "VoxelTerrain.Editor",
-    "rootNamespace": "",
+    "rootNamespace": "VoxelTerrain",
     "references": [
         "GUID:d8b63aba1907145bea998dd612889d6b",
         "GUID:36854c54e46c0cc488032fbc993f96c8"

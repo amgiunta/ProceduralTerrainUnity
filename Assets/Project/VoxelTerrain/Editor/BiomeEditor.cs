@@ -24,7 +24,7 @@ namespace VoxelTerrain
         SerializedProperty propOctaves;
 
         int previewSeed;
-        int previewChunkSize;
+        int previewChunkSize = 64;
 
         Texture2D previewTexture;
 
@@ -77,7 +77,7 @@ namespace VoxelTerrain
 
             if (EditorGUI.EndChangeCheck())
             {
-                float[] noiseMap = Biome.CreateNoiseMap(
+                float[] noiseMap = TerrainNoise.CreateNoiseMap(
                     previewChunkSize,
                     propPersistance.floatValue,
                     propLancunarity.floatValue,
@@ -88,7 +88,7 @@ namespace VoxelTerrain
                     previewSeed
                 );
 
-                previewTexture = Biome.CreateNoiseTexture(noiseMap, previewChunkSize);
+                previewTexture = TerrainNoise.CreateNoiseTexture(noiseMap, previewChunkSize);
             }
 
             GUIStyle previewStyle = new GUIStyle();

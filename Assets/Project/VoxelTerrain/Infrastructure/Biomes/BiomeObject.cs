@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Mathematics;
+using Unity.Collections;
 
 namespace VoxelTerrain
 {
@@ -20,7 +21,7 @@ namespace VoxelTerrain
         public Vector2 heightNormalNoiseScale;
         public float persistance;
         public float lancunarity;
-        [Range(1, 20)] public int octaves;
+        [Range(1, 20)] public int octaves = 1;
 
         public Biome biomeProperties {
             get {
@@ -115,67 +116,6 @@ namespace VoxelTerrain
             return tempIdealness * moisIdealness;
         }
 
-        public static float Noise(float x, float y, float persistance, float lancunarity, int stride = 1, float2 offset = default, float2 scale = default, int octaves = 1, int seed = 0)
-        {
-
-            System.Random rand = new System.Random(seed);
-
-            if (scale.x == 0)
-            {
-                scale.x = 0.00001f;
-            }
-            else if (scale.y == 0)
-            {
-                scale.y = 0.00001f;
-            }
-
-            float amplitude = 1;
-            float frequency = 1;
-            float noiseHeight = 0;
-
-            for (int i = 0; i < octaves; i++)
-            {
-                float2 octOffset = (offset + new float2(rand.Next(-100000, 100000), rand.Next(-100000, 100000)));
-                float2 sample = new float2(
-                    (x * stride + octOffset.x) / scale.x * frequency,
-                    (y * stride + octOffset.y) / scale.y * frequency
-                );
-
-                float perlinValue = noise.cnoise(sample);
-                noiseHeight += perlinValue * amplitude;
-
-                amplitude *= persistance;
-                frequency *= lancunarity;
-            }
-
-            return math.remap(-1, 1, 0, 1, noiseHeight);
-        }
-
-        public static float[] CreateNoiseMap(int chunkWidth, float persistance, float lancunarity, int stride = 1, float2 offset = default, float2 scale = default, int octaves = 1, int seed = 0) {
-            float[] noise = new float[chunkWidth * chunkWidth];
-            
-            for (int y = 0; y < chunkWidth; y++) {
-                for (int x = 0; x < chunkWidth; x++) {
-                    noise[y * chunkWidth + x] = Noise(x, y, persistance, lancunarity, stride, offset, scale, octaves, seed);
-
-                }
-            }
-
-            return noise;
-        }
-
-        public static Texture2D CreateNoiseTexture(float[] noiseMap, int chunkWidth) {
-            Color[] values = new Color[noiseMap.Length];
-
-            for (int i = 0; i < noiseMap.Length; i++) {
-                values[i] = Color.Lerp(Color.black, Color.white, noiseMap[i]);
-            }
-
-            Texture2D tex = new Texture2D(chunkWidth, chunkWidth);
-            tex.SetPixels(values);
-            tex.Apply();
-
-            return tex;
-        }
+        
     }
 }
