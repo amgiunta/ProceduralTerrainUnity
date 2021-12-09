@@ -1,6 +1,8 @@
 using UnityEngine.Jobs;
 using Unity.Collections;
+using System;
 using System.Linq;
+using System.Collections;
 using System.Collections.Generic;
 using Unity.Burst;
 using Unity.Jobs;
@@ -72,82 +74,78 @@ namespace VoxelTerrain {
         }
 
         public class PerlinTerrainGenerator : Generator {
-            new public Dictionary<JobHandle, PerlinTerrainGeneratorJob> runningJobs;
+            new public Dictionary<JobHandle, PerlinGeneratorJobV2> runningJobs;
 
             public Biome[] biomes;
-            public int seed;
-            public Vector2 temperatureNoiseScale;
-            public Vector2 moistureNoiseScale;
-            public Vector2 biomeNoiseScaleNormal;
-            public float2 randomOffset;
+            TerrainSettings settings;
 
             private System.Random rand;
 
             public PerlinTerrainGenerator(
-                int seed,
                 Biome[] biomes,
-                Vector2 temperatureNoiseScale,
-                Vector2 moistureNoiseScale,
-                Vector2 biomeNoiseScaleNormal,
+                TerrainSettings settings,
                 int chunkWidth = 64
              ) {
                 this.chunkWidth = chunkWidth;
-                this.seed = seed;
                 this.biomes = biomes;
-                this.temperatureNoiseScale = temperatureNoiseScale;
-                this.moistureNoiseScale = moistureNoiseScale;
-                this.biomeNoiseScaleNormal = biomeNoiseScaleNormal;
+                this.settings = settings;
 
-                runningJobs = new Dictionary<JobHandle, PerlinTerrainGeneratorJob>();
-                rand = new System.Random(seed);
-                randomOffset = new float2(rand.Next(-100000, 100000), rand.Next(-100000, 100000));
-            }
-            public float GetTemperature(float x, float y, int stride = 1)
-            {
-                float tempx = math.clamp((x * stride + seed) * temperatureNoiseScale.x, -float.MaxValue, float.MaxValue);
-                float tempy = math.clamp((y * stride + seed) * temperatureNoiseScale.y, -float.MaxValue, float.MaxValue);
-                //float normal = Mathf.PerlinNoise((x * stride + seed) * biomeNoiseScaleNormal.x, (y * stride + seed) * biomeNoiseScaleNormal.y);
-                float temperature = Mathf.PerlinNoise(tempx * biomeNoiseScaleNormal.x, tempy * biomeNoiseScaleNormal.y);
-
-                return Mathf.Clamp(temperature, 0f, 1f);
-            }
-
-            public float GetMoisture(float x, float y, int stride = 1)
-            {
-                float moisx = math.clamp((x * stride + seed) * moistureNoiseScale.x, -float.MaxValue, float.MaxValue);
-                float moisy = math.clamp((y * stride + seed) * moistureNoiseScale.y, -float.MaxValue, float.MaxValue);
-                float moisture = Mathf.PerlinNoise(moisx * biomeNoiseScaleNormal.x, moisy * biomeNoiseScaleNormal.y);
-
-                return Mathf.Clamp(moisture, 0f, 1f);
+                runningJobs = new Dictionary<JobHandle, PerlinGeneratorJobV2>();
+                rand = new System.Random(settings.seed);
             }
 
             public override void QueueChunk(Chunk chunk)
             {
                 int lodWidth = chunk.chunkWidth;
 
-                for (int i = 0; lodWidth >= 8 ; i++)
+                float[] noiseMaps = new float[chunk.chunkWidth * chunk.chunkWidth * biomes.Length];
+
+                float2[] climateMap = new float2[chunk.chunkWidth * chunk.chunkWidth];
+                TerrainNoise.CreateClimateMap(chunk.chunkWidth, ref climateMap, 0, settings, chunk.gridPosition * chunk.chunkWidth);
+
+                for (int i = 0; i < biomes.Length; i++) {
+                    TerrainNoise.CreateNoiseMap(
+                        chunk.chunkWidth,
+                        settings,
+                        biomes[i],
+                        ref noiseMaps,
+                        chunk.chunkWidth * chunk.chunkWidth * i,
+                        1,
+                        chunk.gridPosition * chunk.chunkWidth
+                    );
+                }
+
+                //Debug.Log($"NoiseMaps length: {noiseMaps.Length}");
+                //Debug.Log($"ClimateMap length: {climateMap.Length}");
+
+                JobHandle previous = default;
+                
+                for (int i = 0; lodWidth >= 8; i++)
                 {
 
-                    PerlinTerrainGeneratorJob job = new PerlinTerrainGeneratorJob
+                    PerlinGeneratorJobV2 job = new PerlinGeneratorJobV2
                     {
-                        chunkData = new NativeArray<Voxel>(new Voxel[lodWidth * lodWidth], Allocator.Persistent),
+                        noiseMaps = new NativeArray<float>(noiseMaps, Allocator.Persistent),
+                        climateMap = new NativeArray<float2>(climateMap, Allocator.Persistent),
                         biomes = new NativeArray<Biome>(biomes, Allocator.Persistent),
-                        temperatureNoiseScale = new float2(temperatureNoiseScale.x, temperatureNoiseScale.y),
-                        moistureNoiseScale = new float2(moistureNoiseScale.x, moistureNoiseScale.y),
-                        biomeNoiseScaleNormal = biomeNoiseScaleNormal,
-                        chunkWidth = chunkWidth,
+                        voxels = new NativeArray<Voxel>(new Voxel[lodWidth * lodWidth], Allocator.Persistent),
+                        chunkWidth = chunk.chunkWidth,
                         lodWidth = lodWidth,
                         lodIndex = i,
-                        chunkPosition = chunk.gridPosition,
-                        randomOffset = randomOffset
+                        chunkPosition = chunk.gridPosition
                     };
 
+                    JobHandle handle = default;
 
-                    JobHandle handle = job.Schedule(lodWidth * lodWidth, lodWidth * lodWidth);
+                    handle = job.Schedule(lodWidth * lodWidth, lodWidth);
+
                     runningJobs.Add(handle, job);
 
+                    previous = handle;
                     lodWidth /= 2;
+                
                 }
+                
             }
 
             public override void QueueChunks(List<Chunk> chunks)
@@ -160,38 +158,18 @@ namespace VoxelTerrain {
                 }
             }
 
-            public virtual void ResolveJob(JobHandle key, chunkProcessCallback onChunkComplete) {
-                var job = runningJobs[key];
-
-                key.Complete();
-                onChunkComplete(
-                        job.chunkPosition,
-                        job.chunkData.ToArray(),
-                        job.lodIndex
-                    );
+            public virtual void ResolveJob(JobHandle key, chunkProcessCallback onChunkComplete, MonoBehaviour sceneObject) {
+                sceneObject.StartCoroutine(CompleteJob(key, onChunkComplete));
             }
 
-            public virtual void ResolveJob(chunkProcessCallback onChunkComplete) {
-                foreach (var process in runningJobs) {
-                    if (process.Key.IsCompleted)
-                    {
-                        ResolveJob(process.Key, onChunkComplete);
-                        process.Value.chunkData.Dispose();
-                        process.Value.biomes.Dispose();
-                        runningJobs.Remove(process.Key);
-                        return;
-                    }
-                }
-            }
-
-            public virtual void ResolveClosestJob(int2 point, chunkProcessCallback onChunkComplete) {
+            public virtual void ResolveClosestJob(int2 point, chunkProcessCallback onChunkComplete, MonoBehaviour sceneObject) {
                 if (runningJobs.Count == 0) { return; }
                 Profiler.BeginSample("Resolve Closest Job");
-
                 JobHandle closest = runningJobs.First().Key;
                 int2 closestPosition = runningJobs[closest].chunkPosition;
                 float closestDistance = math.distance(closestPosition, point);
                 foreach (var process in runningJobs) {
+
                     int2 position = process.Value.chunkPosition;
                     float distance = math.distance(position, point);
                     int lod = process.Value.lodIndex;
@@ -202,11 +180,8 @@ namespace VoxelTerrain {
                     }
                 }
 
-                ResolveJob(closest, onChunkComplete);
-                runningJobs[closest].chunkData.Dispose();
-                runningJobs[closest].biomes.Dispose();
-                runningJobs.Remove(closest);
-
+                ResolveJob(closest, onChunkComplete, sceneObject);
+                
                 Profiler.EndSample();
             }
 
@@ -218,44 +193,88 @@ namespace VoxelTerrain {
 
                     onChunkComplete(
                         process.Value.chunkPosition,
-                        process.Value.chunkData.ToArray(),
+                        process.Value.voxels.ToArray(),
                         process.Value.lodIndex
                     );
 
-                    process.Value.chunkData.Dispose();
+                    process.Value.voxels.Dispose();
                     process.Value.biomes.Dispose();
+                    process.Value.climateMap.Dispose();
+                    process.Value.noiseMaps.Dispose();
                 }
 
                 runningJobs.Clear();
             }
 
-            public virtual void DisposeJobs() {
-                foreach (var process in runningJobs)
+            public IEnumerator CompleteJob(JobHandle key, chunkProcessCallback onChunkComplete) {
+                var job = runningJobs[key];
+
+                yield return new WaitUntil(() => key.IsCompleted);
+                runningJobs.Remove(key);
+
+                key.Complete();
+
+                try
                 {
-                    process.Key.Complete();
+                    onChunkComplete(
+                            job.chunkPosition,
+                            job.voxels.ToArray(),
+                            job.lodIndex
+                        );
 
-                    process.Value.chunkData.Dispose();
-                    process.Value.biomes.Dispose();
+                    job.voxels.Dispose();
+                    job.biomes.Dispose();
+                    job.noiseMaps.Dispose();
+                    job.climateMap.Dispose();
                 }
-
-                runningJobs.Clear();
+                catch (Exception e) {
+                    Debug.LogWarning($"Attempeted to use job data and dispose, but job was already disposed. Ignoring. {e.Message}");
+                }
             }
         }
 
+        
         [BurstCompile(Debug = true)]
         public struct PerlinGeneratorJobV2 : IJobParallelFor {
-            public NativeArray<NativeArray<float>> noiseMaps;
-            public NativeArray<float2> climateMap;
-            public NativeArray<Biome> biomes;
+            [ReadOnly] public NativeArray<float> noiseMaps;
+            [ReadOnly] public NativeArray<float2> climateMap;
+            [ReadOnly] public NativeArray<Biome> biomes;
             public NativeArray<Voxel> voxels;
             public int chunkWidth;
             public int lodWidth;
             public int lodIndex;
-            public float2 randomOffset;
             public int2 chunkPosition;
 
-            public void Execute(int heightId) { 
-                
+            public void Execute(int id) {
+                int stride = Mathf.Max(1, chunkWidth / lodWidth);
+                int noiseIndex = id * stride;
+                int mapSize = chunkWidth * chunkWidth;
+                float2 climate = climateMap[noiseIndex];
+                float3 up = new float3(0, 1, 0);
+
+                Voxel voxel = voxels[id];
+
+                float totalHeight = 0;
+                float totalWeight = 0;
+
+                int count = 0;
+                foreach (Biome biome in biomes) {
+                    //Debug.Log($"Map Index: {(mapSize * count) + noiseIndex}");
+                    float height = math.remap(0, 1, biome.minTerrainHeight, biome.maxTerrainHeight, noiseMaps[(mapSize * count) + noiseIndex]);
+                    float weight = biome.Idealness(climate.x, climate.y);
+
+                    totalHeight += height * weight;
+                    totalWeight += weight;
+
+                    count++;
+                }
+
+                voxel.x = id % lodWidth;
+                voxel.y = id / lodWidth;
+                voxel.height = (int)(totalHeight / totalWeight);
+                voxel.normalNorth = voxel.normalSouth = voxel.normalEast = voxel.normalWest = up;
+
+                voxels[id] = voxel;
             }
         }
 

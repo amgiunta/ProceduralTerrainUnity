@@ -17,13 +17,10 @@ namespace VoxelTerrain
         public string worldName = "NewWorld";
         public Grid grid;
 
-        public float generatorFrequency = 0.02f;
-        [Min(1)] public int seed = 0;        
+        public float generatorFrequency = 0.02f;     
 
         public List<BiomeObject> biomes;
-        public Vector2 temperatureNoiseScale;
-        public Vector2 moistureNoiseScale;
-        public Vector2 biomeNoiseScaleNormal;
+        public TerrainSettings terrainSettings;
 
         [Range(1, 500)] public float renderDistance;
         public List<float> lodRanges;
@@ -45,11 +42,8 @@ namespace VoxelTerrain
 
                 if (_generator == null) {
                     _generator = new PerlinTerrainGenerator(
-                        seed,
                         biomeStructs,
-                        temperatureNoiseScale,
-                        moistureNoiseScale,
-                        biomeNoiseScaleNormal,
+                        terrainSettings,
                         grid.chunkSize
                     );
                 }
@@ -93,7 +87,12 @@ namespace VoxelTerrain
         private void FixedUpdate()
         {
             elapsedTime += Time.fixedDeltaTime;
-        }        
+        }
+
+        private void LateUpdate()
+        {
+            //generator.DisposeJobs();
+        }
 
         public void LoadChunks(int2 gridPosition) {
             if (elapsedTime - lastUpdate < generatorFrequency) { return; }
@@ -135,7 +134,7 @@ namespace VoxelTerrain
         public void ResolveChunks(int2 gridPosition) {
             if (elapsedTime - lastUpdate > generatorFrequency)
             {
-                generator?.ResolveClosestJob(gridPosition, UpdateChunkObject);
+                generator?.ResolveClosestJob(gridPosition, UpdateChunkObject, this);
                 lastUpdate = elapsedTime;
             }
         }

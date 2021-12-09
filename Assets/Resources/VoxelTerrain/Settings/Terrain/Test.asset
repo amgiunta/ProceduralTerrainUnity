@@ -15,7 +15,7 @@ MonoBehaviour:
   seed: 0
   minTemperature: 0
   maxTemperature: 1
-  temperatureLancunarity: 2.87
+  temperatureLancunarity: 3.31
   temperaturePersistance: 1.68
   temperatureOctaves: 4
   temperatureScale:

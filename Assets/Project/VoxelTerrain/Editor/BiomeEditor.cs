@@ -77,15 +77,12 @@ namespace VoxelTerrain
 
             if (EditorGUI.EndChangeCheck())
             {
-                float[] noiseMap = TerrainNoise.CreateNoiseMap(
+                float[] noiseMap = new float[previewChunkSize * previewChunkSize];
+                TerrainNoise.CreateNoiseMap(
                     previewChunkSize,
-                    propPersistance.floatValue,
-                    propLancunarity.floatValue,
-                    1,
-                    default,
-                    propGeneratorNoiseScale.vector2Value,
-                    propOctaves.intValue,
-                    previewSeed
+                    (Biome) target,
+                    previewSeed,
+                    ref noiseMap
                 );
 
                 previewTexture = TerrainNoise.CreateNoiseTexture(noiseMap, previewChunkSize);

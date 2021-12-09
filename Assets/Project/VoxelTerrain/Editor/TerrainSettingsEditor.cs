@@ -87,10 +87,12 @@ namespace VoxelTerrain
             previewChunkSize = EditorGUILayout.IntField("Preview Chunk Width", previewChunkSize);
 
             if (EditorGUI.EndChangeCheck()) {
-                float2[] climateMap = TerrainNoise.CreateClimateMap(
+                float2[] climateMap = new float2[previewChunkSize * previewChunkSize];
+                TerrainNoise.CreateClimateMap(
                     previewChunkSize,
-                    (TerrainSettings)target,
-                    new float2(0, 0)
+                    ref climateMap,
+                    0,
+                    (TerrainSettings)target
                 );
 
                 previewTexture = TerrainNoise.CreateClimateTexture(climateMap, previewChunkSize);

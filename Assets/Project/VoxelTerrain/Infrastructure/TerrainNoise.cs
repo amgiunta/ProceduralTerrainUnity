@@ -77,42 +77,40 @@ namespace VoxelTerrain
             return math.remap(-1, 1, 0, 1, noiseHeight);
         }
 
-        public static float[] CreateNoiseMap(int chunkWidth, float persistance, float lancunarity, int stride = 1, float2 offset = default, float2 scale = default, int octaves = 1, int seed = 0)
+        public static void CreateNoiseMap(int chunkWidth, TerrainSettings terrainSettings, Biome biome, ref float[] noiseMap, int startIndex = 0, int stride = 1, float2 offset = default)
         {
-            float[] noise = new float[chunkWidth * chunkWidth];
-
             for (int y = 0; y < chunkWidth; y++)
             {
                 for (int x = 0; x < chunkWidth; x++)
                 {
-                    noise[y * chunkWidth + x] = Noise(x, y, persistance, lancunarity, stride, offset, scale, octaves, seed);
+                    noiseMap[(y * chunkWidth + x) + startIndex] = Noise(x, y, biome.persistance, biome.lancunarity, stride, offset, biome.generatorNoiseScale, biome.octaves, terrainSettings.seed);
                 }
             }
-
-            return noise;
+        }
+        public static void CreateNoiseMap(int chunkWidth, Biome biome, int seed, ref float[] noiseMap, int startIndex = 0, int stride = 1, float2 offset = default)
+        {
+            for (int y = 0; y < chunkWidth; y++)
+            {
+                for (int x = 0; x < chunkWidth; x++)
+                {
+                    noiseMap[(y * chunkWidth + x) + startIndex] = Noise(x, y, biome.persistance, biome.lancunarity, stride, offset, biome.generatorNoiseScale, biome.octaves, seed);
+                }
+            }
         }
 
-        public static NativeArray<float> CreateNativeNoiseMap(int chunkWidth, float persistance, float lancunarity, int stride = 1, float2 offset = default, float2 scale = default, int octaves = 1, int seed = 0)
+        public static void CreateNativeNoiseMap(int chunkWidth, TerrainSettings terrainSettings, Biome biome, ref NativeArray<float> noiseMap, int startIndex, int stride = 1, float2 offset = default)
         {
-            NativeArray<float> noise = new NativeArray<float>(
-                CreateNoiseMap(
-                    chunkWidth,
-                    persistance,
-                    lancunarity,
-                    stride,
-                    offset,
-                    scale,
-                    octaves,
-                    seed
-            ), Allocator.Persistent);
-
-            return noise;
+            for (int y = 0; y < chunkWidth; y++)
+            {
+                for (int x = 0; x < chunkWidth; x++)
+                {
+                    noiseMap[(y * chunkWidth + x) + startIndex] = Noise(x, y, biome.persistance, biome.lancunarity, stride, offset, biome.generatorNoiseScale, biome.octaves, terrainSettings.seed);
+                }
+            }
         }
 
-        public static float2[] CreateClimateMap(int chunkWidth, TerrainSettings settings, float2 gridPosition)
+        public static void CreateClimateMap(int chunkWidth, ref float2[] climateMap, int startIndex, TerrainSettings settings, float2 gridPosition = default)
         {
-            float2[] noise = new float2[chunkWidth * chunkWidth];
-
             for (int y = 0; y < chunkWidth; y++)
             {
                 for (int x = 0; x < chunkWidth; x++)
@@ -123,22 +121,25 @@ namespace VoxelTerrain
                     float moisture = Noise(x, y, settings.moisturePersistance, settings.moistureLancunarity, 1, settings.moistureOffset + gridPosition, settings.moistureScale, settings.moistureOctaves, settings.seed);
                     moisture = math.remap(0, 1, settings.minMoisture, settings.maxMoisture, moisture);
 
-                    noise[y * chunkWidth + x] = new float2(temperature, moisture);
+                    climateMap[(y * chunkWidth + x) + startIndex] = new float2(temperature, moisture);
                 }
             }
-
-            return noise;
         }
 
-        public static NativeArray<float2> CreateNativeClimateMap(int chunkWidth, TerrainSettings settings, float2 gridPosition) {
-            NativeArray<float2> noise = new NativeArray<float2>(
-                CreateClimateMap(
-                    chunkWidth,
-                    settings,
-                    gridPosition
-            ), Allocator.Persistent);
+        public static void CreateNativeClimateMap(int chunkWidth, ref NativeArray<float2> climateMap, int startIndex, TerrainSettings settings, float2 gridPosition = default) {
+            for (int y = 0; y < chunkWidth; y++)
+            {
+                for (int x = 0; x < chunkWidth; x++)
+                {
+                    float temperature = Noise(x, y, settings.temperaturePersistance, settings.temperatureLancunarity, 1, settings.temperatureOffset + gridPosition, settings.temperatureScale, settings.temperatureOctaves, settings.seed);
+                    temperature = math.remap(0, 1, settings.minTemperature, settings.maxTemperature, temperature);
 
-            return noise;
+                    float moisture = Noise(x, y, settings.moisturePersistance, settings.moistureLancunarity, 1, settings.moistureOffset + gridPosition, settings.moistureScale, settings.moistureOctaves, settings.seed);
+                    moisture = math.remap(0, 1, settings.minMoisture, settings.maxMoisture, moisture);
+
+                    climateMap[(y * chunkWidth + x) + startIndex] = new float2(temperature, moisture);
+                }
+            }
         }
 
         public static Texture2D CreateNoiseTexture(float[] noiseMap, int chunkWidth)
