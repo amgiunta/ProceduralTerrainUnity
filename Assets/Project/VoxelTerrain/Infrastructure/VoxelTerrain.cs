@@ -97,7 +97,7 @@ namespace VoxelTerrain {
             public override void QueueChunk(Chunk chunk)
             {
                 int lodWidth = chunk.chunkWidth;
-
+                /*
                 float[] noiseMaps = new float[chunk.chunkWidth * chunk.chunkWidth * biomes.Length];
 
                 float2[] climateMap = new float2[chunk.chunkWidth * chunk.chunkWidth];
@@ -114,6 +114,7 @@ namespace VoxelTerrain {
                         chunk.gridPosition * chunk.chunkWidth
                     );
                 }
+                */
 
                 //Debug.Log($"NoiseMaps length: {noiseMaps.Length}");
                 //Debug.Log($"ClimateMap length: {climateMap.Length}");
@@ -125,10 +126,10 @@ namespace VoxelTerrain {
 
                     PerlinGeneratorJobV2 job = new PerlinGeneratorJobV2
                     {
-                        noiseMaps = new NativeArray<float>(noiseMaps, Allocator.Persistent),
-                        climateMap = new NativeArray<float2>(climateMap, Allocator.Persistent),
                         biomes = new NativeArray<Biome>(biomes, Allocator.Persistent),
                         voxels = new NativeArray<Voxel>(new Voxel[lodWidth * lodWidth], Allocator.Persistent),
+                        seed = settings.seed,
+                        climateSettings = settings,
                         chunkWidth = chunk.chunkWidth,
                         lodWidth = lodWidth,
                         lodIndex = i,
@@ -199,8 +200,8 @@ namespace VoxelTerrain {
 
                     process.Value.voxels.Dispose();
                     process.Value.biomes.Dispose();
-                    process.Value.climateMap.Dispose();
-                    process.Value.noiseMaps.Dispose();
+                    //process.Value.climateMap.Dispose();
+                    //process.Value.noiseMaps.Dispose();
                 }
 
                 runningJobs.Clear();
@@ -224,8 +225,8 @@ namespace VoxelTerrain {
 
                     job.voxels.Dispose();
                     job.biomes.Dispose();
-                    job.noiseMaps.Dispose();
-                    job.climateMap.Dispose();
+                    //job.noiseMaps.Dispose();
+                    //job.climateMap.Dispose();
                 }
                 catch (Exception e) {
                     Debug.LogWarning($"Attempeted to use job data and dispose, but job was already disposed. Ignoring. {e.Message}");
@@ -236,10 +237,10 @@ namespace VoxelTerrain {
         
         [BurstCompile(Debug = true)]
         public struct PerlinGeneratorJobV2 : IJobParallelFor {
-            [ReadOnly] public NativeArray<float> noiseMaps;
-            [ReadOnly] public NativeArray<float2> climateMap;
             [ReadOnly] public NativeArray<Biome> biomes;
             public NativeArray<Voxel> voxels;
+            public ClimateSettings climateSettings;
+            public int seed;
             public int chunkWidth;
             public int lodWidth;
             public int lodIndex;
@@ -249,10 +250,13 @@ namespace VoxelTerrain {
                 int stride = Mathf.Max(1, chunkWidth / lodWidth);
                 int noiseIndex = id * stride;
                 int mapSize = chunkWidth * chunkWidth;
-                float2 climate = climateMap[noiseIndex];
                 float3 up = new float3(0, 1, 0);
 
                 Voxel voxel = voxels[id];
+                voxel.x = id % lodWidth;
+                voxel.y = id / lodWidth;
+
+                float2 climate = TerrainNoise.Climate(voxel.x, voxel.y, climateSettings, chunkPosition * chunkWidth, seed);
 
                 float totalHeight = 0;
                 float totalWeight = 0;
@@ -260,7 +264,8 @@ namespace VoxelTerrain {
                 int count = 0;
                 foreach (Biome biome in biomes) {
                     //Debug.Log($"Map Index: {(mapSize * count) + noiseIndex}");
-                    float height = math.remap(0, 1, biome.minTerrainHeight, biome.maxTerrainHeight, noiseMaps[(mapSize * count) + noiseIndex]);
+                    float noise = biome.GetNoiseAtPoint(voxel.x, voxel.y, stride, chunkPosition * chunkWidth, seed);
+                    float height = math.remap(0, 1, biome.minTerrainHeight, biome.maxTerrainHeight, noise);
                     float weight = biome.Idealness(climate.x, climate.y);
 
                     totalHeight += height * weight;
@@ -268,9 +273,7 @@ namespace VoxelTerrain {
 
                     count++;
                 }
-
-                voxel.x = id % lodWidth;
-                voxel.y = id / lodWidth;
+                
                 voxel.height = (int)(totalHeight / totalWeight);
                 voxel.normalNorth = voxel.normalSouth = voxel.normalEast = voxel.normalWest = up;
 

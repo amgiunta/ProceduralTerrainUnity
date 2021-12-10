@@ -1,5 +1,6 @@
 using System.IO;
 using System.Linq;
+using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.Serialization.Formatters.Binary;
 using UnityEngine;
@@ -53,6 +54,7 @@ namespace VoxelTerrain
         public WorldSaveData saveData;
 
         private PerlinTerrainGenerator _generator;
+        private int2 loadingFromChunk = new int2(int.MaxValue, int.MaxValue);
 
         private void Awake()
         {
@@ -94,41 +96,12 @@ namespace VoxelTerrain
             //generator.DisposeJobs();
         }
 
-        public void LoadChunks(int2 gridPosition) {
-            if (elapsedTime - lastUpdate < generatorFrequency) { return; }
-
-            Profiler.BeginSample("Generate Chunk Data");
-
-            int x = 0;
-            int y = 0;
-            int dx = 0;
-            int dy = -1;
-
-            for (int i = 0; i < (renderDistance * renderDistance); i++) {
-                if (((-renderDistance / 2) < x && x <= (renderDistance / 2)) && ((-renderDistance / 2) < y && y <= (renderDistance / 2))) {
-                    int2 chunkLocation = gridPosition + new int2(x, y);
-                    if (math.distance(chunkLocation, gridPosition) < renderDistance) {
-                        if (chunks.ContainsKey(chunkLocation))
-                        {
-                            InstantiateChunkObject(chunks[chunkLocation]);
-                        }
-                        else
-                        {
-                            InitializeChunk(chunkLocation);
-                        }
-                    }
-                }
-                if (x == y || (x < 0 && x == -y) || (x > 0 && x == 1 - y)) {
-                    int temp = dx;
-                    dx = -dy;
-                    dy = temp;
-                }
-
-                x += dx;
-                y += dy;
+        public void StartLoadingChunks(int2 gridPosition) {
+            if (!gridPosition.Equals(loadingFromChunk)) {
+                StopCoroutine("LoadChunks");
+                StartCoroutine(LoadChunks(gridPosition));
+                loadingFromChunk = gridPosition;
             }
-
-            Profiler.EndSample();
         }
 
         public void ResolveChunks(int2 gridPosition) {
@@ -140,8 +113,6 @@ namespace VoxelTerrain
         }
 
         public void StartGenerator() {
-            LoadChunks(default);
-
             OnStartGeneration.Invoke();
         }
 
@@ -226,6 +197,43 @@ namespace VoxelTerrain
                 foreach (Chunk chunk in saveData.chunks) {
                     chunks.Add(chunk.gridPosition, chunk);
                 }
+            }
+        }
+
+        public IEnumerator LoadChunks(int2 gridPosition) {
+            int x = 0;
+            int y = 0;
+            int dx = 0;
+            int dy = -1;
+
+            for (int i = 0; i < (renderDistance * renderDistance); i++)
+            {
+                if (((-renderDistance / 2) < x && x <= (renderDistance / 2)) && ((-renderDistance / 2) < y && y <= (renderDistance / 2)))
+                {
+                    int2 chunkLocation = gridPosition + new int2(x, y);
+                    if (math.distance(chunkLocation, gridPosition) < renderDistance)
+                    {
+                        yield return new WaitForSeconds(generatorFrequency);
+
+                        if (chunks.ContainsKey(chunkLocation))
+                        {
+                            InstantiateChunkObject(chunks[chunkLocation]);
+                        }
+                        else
+                        {
+                            InitializeChunk(chunkLocation);
+                        }
+                    }
+                }
+                if (x == y || (x < 0 && x == -y) || (x > 0 && x == 1 - y))
+                {
+                    int temp = dx;
+                    dx = -dy;
+                    dy = temp;
+                }
+
+                x += dx;
+                y += dy;
             }
         }
 

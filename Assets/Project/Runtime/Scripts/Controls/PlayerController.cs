@@ -62,7 +62,7 @@ public class PlayerController : MonoBehaviour
     {
         if (PlayerController.instance)
         {
-            TerrainManager.instance.LoadChunks(PlayerController.instance.gridPosition);
+            TerrainManager.instance.StartLoadingChunks(PlayerController.instance.gridPosition);
         }
     }
 

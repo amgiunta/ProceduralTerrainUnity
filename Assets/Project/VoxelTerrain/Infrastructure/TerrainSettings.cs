@@ -26,4 +26,44 @@ namespace VoxelTerrain
         public float2 moistureScale;
         public float2 moistureOffset;
     }
+
+    public struct ClimateSettings {
+        public float minTemperature;
+        public float maxTemperature;
+        public float temperatureLancunarity;
+        public float temperaturePersistance;
+        public int temperatureOctaves;
+        public float2 temperatureScale;
+        public float2 temperatureOffset;
+
+        public float minMoisture;
+        public float maxMoisture;
+        public float moistureLancunarity;
+        public float moisturePersistance;
+        public int moistureOctaves;
+        public float2 moistureScale;
+        public float2 moistureOffset;
+
+        public static implicit operator ClimateSettings(TerrainSettings other) {
+            if (other == null) { return null; }
+
+            return new ClimateSettings {
+                minTemperature = other.minTemperature,
+                maxTemperature = other.maxTemperature,
+                temperatureLancunarity = other.temperatureLancunarity,
+                temperaturePersistance = other.temperaturePersistance,
+                temperatureOctaves = other.temperatureOctaves,
+                temperatureScale = other.temperatureScale,
+                temperatureOffset = other.temperatureOffset,
+
+                minMoisture = other.minMoisture,
+                maxMoisture = other.maxMoisture,
+                moistureLancunarity = other.moistureLancunarity,
+                moisturePersistance = other.moisturePersistance,
+                moistureOctaves = other.moistureOctaves,
+                moistureScale = other.moistureScale,
+                moistureOffset = other.moistureOffset
+            };
+        }
+    }
 }
