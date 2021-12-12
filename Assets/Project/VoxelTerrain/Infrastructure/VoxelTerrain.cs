@@ -97,27 +97,6 @@ namespace VoxelTerrain {
             public override void QueueChunk(Chunk chunk)
             {
                 int lodWidth = chunk.chunkWidth;
-                /*
-                float[] noiseMaps = new float[chunk.chunkWidth * chunk.chunkWidth * biomes.Length];
-
-                float2[] climateMap = new float2[chunk.chunkWidth * chunk.chunkWidth];
-                TerrainNoise.CreateClimateMap(chunk.chunkWidth, ref climateMap, 0, settings, chunk.gridPosition * chunk.chunkWidth);
-
-                for (int i = 0; i < biomes.Length; i++) {
-                    TerrainNoise.CreateNoiseMap(
-                        chunk.chunkWidth,
-                        settings,
-                        biomes[i],
-                        ref noiseMaps,
-                        chunk.chunkWidth * chunk.chunkWidth * i,
-                        1,
-                        chunk.gridPosition * chunk.chunkWidth
-                    );
-                }
-                */
-
-                //Debug.Log($"NoiseMaps length: {noiseMaps.Length}");
-                //Debug.Log($"ClimateMap length: {climateMap.Length}");
 
                 JobHandle previous = default;
                 
@@ -200,8 +179,6 @@ namespace VoxelTerrain {
 
                     process.Value.voxels.Dispose();
                     process.Value.biomes.Dispose();
-                    //process.Value.climateMap.Dispose();
-                    //process.Value.noiseMaps.Dispose();
                 }
 
                 runningJobs.Clear();
@@ -225,8 +202,6 @@ namespace VoxelTerrain {
 
                     job.voxels.Dispose();
                     job.biomes.Dispose();
-                    //job.noiseMaps.Dispose();
-                    //job.climateMap.Dispose();
                 }
                 catch (Exception e) {
                     Debug.LogWarning($"Attempeted to use job data and dispose, but job was already disposed. Ignoring. {e.Message}");
@@ -248,34 +223,49 @@ namespace VoxelTerrain {
 
             public void Execute(int id) {
                 int stride = Mathf.Max(1, chunkWidth / lodWidth);
-                int noiseIndex = id * stride;
-                int mapSize = chunkWidth * chunkWidth;
                 float3 up = new float3(0, 1, 0);
+
 
                 Voxel voxel = voxels[id];
                 voxel.x = id % lodWidth;
                 voxel.y = id / lodWidth;
 
                 float2 climate = TerrainNoise.Climate(voxel.x, voxel.y, climateSettings, chunkPosition * chunkWidth, seed);
+                voxel.height = (int) TerrainNoise.GetHeightAtPoint(voxel.x, voxel.y, climate, biomes, stride, chunkPosition, chunkWidth, seed);
 
-                float totalHeight = 0;
-                float totalWeight = 0;
+                for (int n = -1; n <= 1; n++) {
+                    for (int m = -1; m <= 1; m++) {
+                        if (m == n) {
+                            continue;
+                        }
 
-                int count = 0;
-                foreach (Biome biome in biomes) {
-                    //Debug.Log($"Map Index: {(mapSize * count) + noiseIndex}");
-                    float noise = biome.GetNoiseAtPoint(voxel.x, voxel.y, stride, chunkPosition * chunkWidth, seed);
-                    float height = math.remap(0, 1, biome.minTerrainHeight, biome.maxTerrainHeight, noise);
-                    float weight = biome.Idealness(climate.x, climate.y);
+                        float2 position = new float2(voxel.x + m, voxel.y + n);
+                        climate = TerrainNoise.Climate(position.x, position.y, climateSettings, chunkPosition * chunkWidth, seed);
+                        float height = TerrainNoise.GetHeightAtPoint(position.x, position.y, climate, biomes, stride, chunkPosition, chunkWidth, seed);
+                        float3 heading = (new float3(position.x, height, position.y)) - new float3(voxel.x, voxel.height, voxel.y);
 
-                    totalHeight += height * weight;
-                    totalWeight += weight;
-
-                    count++;
+                        if (m == 0)
+                        {
+                            if (n == -1)
+                            {
+                                voxel.normalSouth = math.normalizesafe(math.cross(new float3(1, 0, 0), heading));
+                            }
+                            else
+                            {
+                                voxel.normalNorth = math.normalizesafe(math.cross(new float3(-1, 0, 0), heading));
+                            }
+                        }
+                        else if (n == 0) {
+                            if (m == -1)
+                            {
+                                voxel.normalWest = math.normalizesafe(math.cross(new float3(0, 0, -1), heading));
+                            }
+                            else {
+                                voxel.normalEast = math.normalizesafe(math.cross(new float3(0, 0, 1), heading));
+                            }
+                        }
+                    }
                 }
-                
-                voxel.height = (int)(totalHeight / totalWeight);
-                voxel.normalNorth = voxel.normalSouth = voxel.normalEast = voxel.normalWest = up;
 
                 voxels[id] = voxel;
             }

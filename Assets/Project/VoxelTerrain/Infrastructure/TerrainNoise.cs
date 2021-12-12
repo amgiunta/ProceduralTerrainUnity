@@ -77,6 +77,23 @@ namespace VoxelTerrain
             return math.remap(-1, 1, 0, 1, noiseHeight);
         }
 
+        public static float GetHeightAtPoint(float x, float y, float2 climate, IEnumerable biomes, int stride, float2 chunkPosition, int chunkWidth, int seed) {
+            float totalHeight = 0;
+            float totalWeight = 0;
+            foreach (Biome biome in biomes)
+            {
+                //Debug.Log($"Map Index: {(mapSize * count) + noiseIndex}");
+                float noise = biome.GetNoiseAtPoint(x, y, stride, chunkPosition * chunkWidth, seed);
+                float height = math.remap(0, 1, biome.minTerrainHeight, biome.maxTerrainHeight, noise);
+                float weight = biome.Idealness(climate.x, climate.y);
+
+                totalHeight += height * weight;
+                totalWeight += weight;
+            }
+
+            return totalHeight / totalWeight;
+        }
+
         public static void CreateNoiseMap(int chunkWidth, TerrainSettings terrainSettings, Biome biome, ref float[] noiseMap, int startIndex = 0, int stride = 1, float2 offset = default)
         {
             for (int y = 0; y < chunkWidth; y++)
@@ -125,13 +142,6 @@ namespace VoxelTerrain
             {
                 for (int x = 0; x < chunkWidth; x++)
                 {
-                    /*
-                    float temperature = Noise(x, y, settings.temperaturePersistance, settings.temperatureLancunarity, 1, settings.temperatureOffset + gridPosition, settings.temperatureScale, settings.temperatureOctaves, settings.seed);
-                    temperature = math.remap(0, 1, settings.minTemperature, settings.maxTemperature, temperature);
-
-                    float moisture = Noise(x, y, settings.moisturePersistance, settings.moistureLancunarity, 1, settings.moistureOffset + gridPosition, settings.moistureScale, settings.moistureOctaves, settings.seed);
-                    moisture = math.remap(0, 1, settings.minMoisture, settings.maxMoisture, moisture);
-                    */
 
                     climateMap[(y * chunkWidth + x) + startIndex] = Climate(x, y, settings, gridPosition, settings.seed);
                 }
