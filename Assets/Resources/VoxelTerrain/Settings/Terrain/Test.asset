@@ -12,26 +12,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fb4aea107129c854eabf6d41b9cfb755, type: 3}
   m_Name: Test
   m_EditorClassIdentifier: 
-  seed: 0
+  seed: 235
   minTemperature: 0
   maxTemperature: 1
-  temperatureLancunarity: 3.31
-  temperaturePersistance: 1.68
+  temperatureLancunarity: 0.42
+  temperaturePersistance: 0.01
   temperatureOctaves: 4
   temperatureScale:
     x: 300
     y: 300
   temperatureOffset:
-    x: 0
-    y: 0
+    x: 897
+    y: 543
   minMoisture: 0
   maxMoisture: 1
-  moistureLancunarity: 4.33
-  moisturePersistance: 1.38
-  moistureOctaves: 3
+  moistureLancunarity: 0.1
+  moisturePersistance: 0.01
+  moistureOctaves: 4
   moistureScale:
     x: 300
     y: 300
   moistureOffset:
-    x: 0
-    y: 0
+    x: 680.4
+    y: 984

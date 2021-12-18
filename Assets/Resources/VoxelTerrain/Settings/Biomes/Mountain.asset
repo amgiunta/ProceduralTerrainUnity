@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 375302bfdbbccb34ca2e5f3758292ccf, type: 3}
   m_Name: Mountain
   m_EditorClassIdentifier: 
+  color: {r: 0.7045581, g: 0.7075472, b: 0.34376115, a: 1}
   maxTemperature: 1
   minTemperature: 0
   maxMoisture: 1

@@ -10,6 +10,7 @@ namespace VoxelTerrain
     public class BiomeEditor : Editor
     {
         SerializedObject so;
+        SerializedProperty propColor;
         SerializedProperty propMaxTemperature;
         SerializedProperty propminTemperature;
         SerializedProperty propMaxMoisture;
@@ -32,6 +33,7 @@ namespace VoxelTerrain
         {
             so = serializedObject;
 
+            propColor = so.FindProperty("color");
             propMaxTemperature = so.FindProperty("maxTemperature");
             propminTemperature = so.FindProperty("minTemperature");
             propMaxMoisture = so.FindProperty("maxMoisture");
@@ -54,6 +56,7 @@ namespace VoxelTerrain
 
             EditorGUI.BeginChangeCheck();
 
+            EditorGUILayout.PropertyField(propColor);
             EditorGUILayout.PropertyField(propMaxTemperature);
             EditorGUILayout.PropertyField(propminTemperature);
             EditorGUILayout.PropertyField(propMaxMoisture);

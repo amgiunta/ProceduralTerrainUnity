@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 375302bfdbbccb34ca2e5f3758292ccf, type: 3}
   m_Name: Flat
   m_EditorClassIdentifier: 
+  color: {r: 0.14957604, g: 0.6226415, b: 0, a: 1}
   maxTemperature: 0.86
   minTemperature: 0
   maxMoisture: 0.86

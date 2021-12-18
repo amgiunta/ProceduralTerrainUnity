@@ -9,6 +9,8 @@ namespace VoxelTerrain
     [CreateAssetMenu]
     public class BiomeObject : ScriptableObject
     {
+        public Color color;
+
         [Range(0, 1)] public float maxTemperature = 1;
         [Range(0, 1)] public float minTemperature = 0;
         [Range(0, 1)] public float maxMoisture = 1;
@@ -52,6 +54,8 @@ namespace VoxelTerrain
     }
 
     public struct Biome {
+        public Color color;
+
         public float maxTemperature;
         public float minTemperature;
         public float maxMoisture;
@@ -73,6 +77,7 @@ namespace VoxelTerrain
 
             return new Biome
             {
+                color = other.color,
                 maxTemperature = other.maxTemperature,
                 minTemperature = other.minTemperature,
                 maxMoisture = other.maxMoisture,
