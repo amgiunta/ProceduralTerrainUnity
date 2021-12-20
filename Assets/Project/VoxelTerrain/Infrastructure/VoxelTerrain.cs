@@ -223,14 +223,12 @@ namespace VoxelTerrain {
 
             public void Execute(int id) {
                 int stride = Mathf.Max(1, chunkWidth / lodWidth);
-                float3 up = new float3(0, 1, 0);
-
 
                 Voxel voxel = voxels[id];
                 voxel.x = id % lodWidth;
                 voxel.y = id / lodWidth;
 
-                float2 climate = TerrainNoise.Climate(voxel.x, voxel.y, climateSettings, chunkPosition, chunkWidth, seed);
+                float2 climate = TerrainNoise.Climate(voxel.x * stride, voxel.y * stride, climateSettings, chunkPosition, chunkWidth, seed);
                 voxel.height = (int) TerrainNoise.GetHeightAtPoint(voxel.x, voxel.y, climate, biomes, stride, chunkPosition, chunkWidth, seed);
 
                 for (int n = -1; n <= 1; n++) {
@@ -240,7 +238,7 @@ namespace VoxelTerrain {
                         }
 
                         float2 position = new float2(voxel.x + m, voxel.y + n);
-                        climate = TerrainNoise.Climate(position.x, position.y, climateSettings, chunkPosition, chunkWidth, seed);
+                        climate = TerrainNoise.Climate(position.x * stride, position.y * stride, climateSettings, chunkPosition, chunkWidth, seed);
                         float height = TerrainNoise.GetHeightAtPoint(position.x, position.y, climate, biomes, stride, chunkPosition, chunkWidth, seed);
                         float3 heading = (new float3(position.x, height, position.y)) - new float3(voxel.x, voxel.height, voxel.y);
 

@@ -13,15 +13,15 @@ MonoBehaviour:
   m_Name: Glacial
   m_EditorClassIdentifier: 
   color: {r: 1, g: 1, b: 1, a: 1}
-  maxTemperature: 0.124
+  maxTemperature: 0.2
   minTemperature: 0
   maxMoisture: 1
   minMoisture: 0
   heightNormalIntensity: 0.56
-  minTerrainHeight: 50
+  minTerrainHeight: 72
   maxTerrainHeight: 100
-  generatorNoiseScale: {x: 500, y: 50}
+  generatorNoiseScale: {x: 700, y: 100}
   heightNormalNoiseScale: {x: 0.0065, y: 0.03}
-  persistance: 0.5
-  lancunarity: 3.2
+  persistance: 0.02
+  lancunarity: 3.6
   octaves: 4

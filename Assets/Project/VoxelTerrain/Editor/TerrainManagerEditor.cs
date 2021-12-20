@@ -31,13 +31,15 @@ namespace VoxelTerrain
         Texture2D previewTexture;
 
         MapPreview.MapLense previewLense;
+        TerrainManager manager;
 
         private void OnEnable()
         {
             so = serializedObject;
-            TerrainManager manager = (TerrainManager)target;
+            manager = (TerrainManager)target;
             settings = manager.terrainSettings;
             biomes = new List<Biome>();
+            previewTexture = new Texture2D(0,0);
 
             foreach (BiomeObject bo in manager.biomes) {
                 biomes.Add(bo);
@@ -54,23 +56,11 @@ namespace VoxelTerrain
             propLodRanges = so.FindProperty("lodRanges");
             propOnStartGeneration = so.FindProperty("OnStartGeneration");
 
-
             preview = new MapPreview(new int2(mapPreviewSize.x, mapPreviewSize.y), propChunkWidth.intValue, settings, biomes.ToArray());
         }
         public override void OnInspectorGUI()
         {
             so.Update();
-
-            so = serializedObject;
-            TerrainManager manager = (TerrainManager)target;
-            settings = manager.terrainSettings;
-            biomes = new List<Biome>();
-
-            foreach (BiomeObject bo in manager.biomes)
-            {
-                biomes.Add(bo);
-            }
-
             EditorGUILayout.Space(25);
 
             EditorGUI.BeginChangeCheck();
@@ -86,25 +76,33 @@ namespace VoxelTerrain
             EditorGUILayout.PropertyField(propOnStartGeneration);
 
             mapPreviewSize = EditorGUILayout.Vector2IntField("Map Preview Chunk Size", mapPreviewSize);
+            mapPreviewSize = mapPreviewSize == Vector2Int.zero ? Vector2Int.one : mapPreviewSize;
 
             if (EditorGUI.EndChangeCheck()) {
+                biomes = new List<Biome>();
+                foreach (BiomeObject bo in manager.biomes)
+                {
+                    biomes.Add(bo);
+                }
                 preview = new MapPreview(new int2(mapPreviewSize.x, mapPreviewSize.y), propChunkWidth.intValue, settings, biomes.ToArray());
             }
 
-            previewLense = (MapPreview.MapLense) EditorGUILayout.EnumPopup("Map Preview Lense", previewLense);
+            so.ApplyModifiedProperties();
 
+            previewLense = (MapPreview.MapLense) EditorGUILayout.EnumPopup("Map Preview Lense", previewLense);
+            
             if (GUILayout.Button("Generate Preview")) {
                 preview.Generate();
             }
 
             float aspect = (float) mapPreviewSize.x / mapPreviewSize.y;
-            float width = EditorGUIUtility.currentViewWidth;
+            float width = EditorGUIUtility.currentViewWidth /2;
             float height = width / aspect;
 
-            previewTexture = preview.GetLenseTexture(previewLense);
+            previewTexture = preview.GetLenseTexture(previewLense);            
 
-            EditorGUILayout.ObjectField(previewTexture, typeof(Texture2D), false , GUILayout.ExpandHeight(false), GUILayout.ExpandWidth(true), GUILayout.Height(height));
-
+            EditorGUILayout.ObjectField(previewTexture, typeof(Texture2D), false , GUILayout.Width(width), GUILayout.Height(height));
+            
             so.ApplyModifiedProperties();
         }
     }    

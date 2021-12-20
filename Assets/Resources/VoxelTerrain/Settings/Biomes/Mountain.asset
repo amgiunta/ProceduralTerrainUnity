@@ -13,15 +13,15 @@ MonoBehaviour:
   m_Name: Mountain
   m_EditorClassIdentifier: 
   color: {r: 0.7045581, g: 0.7075472, b: 0.34376115, a: 1}
-  maxTemperature: 1
-  minTemperature: 0
-  maxMoisture: 1
-  minMoisture: 0
+  maxTemperature: 0.68
+  minTemperature: 0.31
+  maxMoisture: 0.68
+  minMoisture: 0.31
   heightNormalIntensity: 1
   minTerrainHeight: -30
   maxTerrainHeight: 100
-  generatorNoiseScale: {x: 223.2, y: 223.2}
+  generatorNoiseScale: {x: 678, y: 670}
   heightNormalNoiseScale: {x: 0.22, y: 0.06}
-  persistance: 0.48
-  lancunarity: 2.94
+  persistance: 0.21
+  lancunarity: 3.32
   octaves: 4

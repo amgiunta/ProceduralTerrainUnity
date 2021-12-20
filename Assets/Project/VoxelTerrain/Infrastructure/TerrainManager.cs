@@ -71,7 +71,7 @@ namespace VoxelTerrain
             chunks = new Dictionary<int2, Chunk>();
             chunkObjects = new Dictionary<int2, TerrainChunk>();
 
-            LoadWorld();
+            //LoadWorld();
 
             StartGenerator();
         }
@@ -236,13 +236,6 @@ namespace VoxelTerrain
                 y += dy;
             }
         }
-
-#if UNITY_EDITOR
-        void OnDrawGizmos()
-        {
-            //Gizmos.DrawWireCube(collider.bounds.min, collider.bounds.size);
-        }
-#endif
     }
 
     [System.Serializable]
