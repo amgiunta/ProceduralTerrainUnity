@@ -19,19 +19,19 @@ MonoBehaviour:
   temperaturePersistance: 0.31
   temperatureOctaves: 4
   temperatureScale:
-    x: 1000
-    y: 1000
+    x: 5678
+    y: 5678
   temperatureOffset:
-    x: 897
-    y: 543
+    x: 4654
+    y: 687
   minMoisture: 0
   maxMoisture: 1
-  moistureLancunarity: 2.01
-  moisturePersistance: 0.2
+  moistureLancunarity: 1.05456
+  moisturePersistance: 0.002
   moistureOctaves: 4
   moistureScale:
-    x: 1000
-    y: 1000
+    x: 5678
+    y: 5678
   moistureOffset:
-    x: 680.4
-    y: 984
+    x: 4534
+    y: 12

@@ -33,6 +33,12 @@ namespace VoxelTerrain
         MapPreview.MapLense previewLense;
         TerrainManager manager;
 
+        private double scheduled = 0f;
+        private double rendered = 0f;
+        private double minWaitTime = 10f;
+        private double maxWaitTime = 60f;
+        private double elapsedTime = 0f;
+
         private void OnEnable()
         {
             so = serializedObject;
@@ -60,6 +66,8 @@ namespace VoxelTerrain
         }
         public override void OnInspectorGUI()
         {
+            elapsedTime = EditorApplication.timeSinceStartup;
+
             so.Update();
             EditorGUILayout.Space(25);
 
@@ -85,14 +93,43 @@ namespace VoxelTerrain
                     biomes.Add(bo);
                 }
                 preview = new MapPreview(new int2(mapPreviewSize.x, mapPreviewSize.y), propChunkWidth.intValue, settings, biomes.ToArray());
+
             }
 
             so.ApplyModifiedProperties();
 
             previewLense = (MapPreview.MapLense) EditorGUILayout.EnumPopup("Map Preview Lense", previewLense);
-            
-            if (GUILayout.Button("Generate Preview")) {
-                preview.Generate();
+
+            if (preview.isRunning)
+            {
+                if (elapsedTime - rendered > minWaitTime)
+                {
+                    if (GUILayout.Button("Force Complete"))
+                    {
+                        preview.CompleteRunningJobs();
+                        rendered = elapsedTime;
+                    }
+                }
+            }
+            else
+            {
+                if (GUILayout.Button("Generate Preview"))
+                {
+                    biomes = new List<Biome>();
+                    foreach (BiomeObject bo in manager.biomes)
+                    {
+                        biomes.Add(bo);
+                    }
+                    preview = new MapPreview(new int2(mapPreviewSize.x, mapPreviewSize.y), propChunkWidth.intValue, settings, biomes.ToArray());
+                    preview.GenerateAsync();
+                    scheduled = elapsedTime;
+                }
+            }
+
+            if (elapsedTime - rendered > maxWaitTime)
+            {
+                preview.CompleteRunningJobs();
+                rendered = elapsedTime;
             }
 
             float aspect = (float) mapPreviewSize.x / mapPreviewSize.y;
