@@ -55,6 +55,7 @@ namespace VoxelTerrain
 
         private PerlinTerrainGenerator _generator;
         private int2 loadingFromChunk = new int2(int.MaxValue, int.MaxValue);
+        private Coroutine loadingRoutine = null;
 
         private void Awake()
         {
@@ -98,18 +99,22 @@ namespace VoxelTerrain
 
         public void StartLoadingChunks(int2 gridPosition) {
             if (!gridPosition.Equals(loadingFromChunk)) {
-                StopCoroutine("LoadChunks");
-                StartCoroutine(LoadChunks(gridPosition));
+                if (loadingRoutine != null) { 
+                    StopCoroutine(loadingRoutine);
+                    loadingRoutine = null;
+                    return;
+                }
+                
                 loadingFromChunk = gridPosition;
+                loadingRoutine = StartCoroutine(LoadChunks());
             }
         }
 
         public void ResolveChunks(int2 gridPosition) {
-            if (elapsedTime - lastUpdate > generatorFrequency)
-            {
-                generator?.ResolveClosestJob(gridPosition, UpdateChunkObject, this);
-                lastUpdate = elapsedTime;
-            }
+            //generator?.ResolveClosestJob(gridPosition, UpdateChunkObject, this);
+            //generator?.ResolveAllCompleteJobs(UpdateChunkObject, this);
+            generator?.ResolveAllCloseJobs(gridPosition, renderDistance, UpdateChunkObject, 1000);
+            lastUpdate = elapsedTime;
         }
 
         public void StartGenerator() {
@@ -200,7 +205,7 @@ namespace VoxelTerrain
             }
         }
 
-        public IEnumerator LoadChunks(int2 gridPosition) {
+        public IEnumerator LoadChunks() {
             int x = 0;
             int y = 0;
             int dx = 0;
@@ -210,18 +215,21 @@ namespace VoxelTerrain
             {
                 if (((-renderDistance / 2) < x && x <= (renderDistance / 2)) && ((-renderDistance / 2) < y && y <= (renderDistance / 2)))
                 {
-                    int2 chunkLocation = gridPosition + new int2(x, y);
-                    if (math.distance(chunkLocation, gridPosition) < renderDistance)
+                    int2 chunkLocation = loadingFromChunk + new int2(x, y);
+                    if (math.distance(chunkLocation, loadingFromChunk) < renderDistance)
                     {
-                        yield return new WaitForSeconds(generatorFrequency);
-
                         if (chunks.ContainsKey(chunkLocation))
                         {
-                            InstantiateChunkObject(chunks[chunkLocation]);
+                            if (!chunkObjects.ContainsKey(chunkLocation))
+                            {
+                                InstantiateChunkObject(chunks[chunkLocation]);
+                                yield return new WaitForSeconds(1f / generatorFrequency);
+                            }
                         }
                         else
                         {
                             InitializeChunk(chunkLocation);
+                            yield return new WaitForSeconds(1f / generatorFrequency);
                         }
                     }
                 }

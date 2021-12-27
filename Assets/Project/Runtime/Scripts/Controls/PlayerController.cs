@@ -57,13 +57,14 @@ public class PlayerController : MonoBehaviour
         targetLook = transform.rotation;
     }
 
+    void EarlyUpdate() { 
+        
+    }
+
     // Update is called once per frame
     void Update()
     {
-        if (PlayerController.instance)
-        {
-            TerrainManager.instance.StartLoadingChunks(PlayerController.instance.gridPosition);
-        }
+        TerrainManager.instance.StartLoadingChunks(PlayerController.instance.gridPosition);
     }
 
     private void LateUpdate()

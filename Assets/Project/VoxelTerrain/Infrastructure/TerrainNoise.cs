@@ -520,8 +520,6 @@ namespace VoxelTerrain
             {
                 for (int x = 0; x < chunkWidth; x++)
                 {
-                    float totalHeight = 0;
-                    float totalWeight = 0;
                     float2 climate = Climate(x, y, settings, chunkPosition, chunkWidth, settings.seed);
 
                     float height = GetHeightAtPoint(x, y, climate, biomes, 1, chunkPosition, chunkWidth, settings.seed);

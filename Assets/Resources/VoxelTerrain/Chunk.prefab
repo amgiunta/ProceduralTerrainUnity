@@ -59,7 +59,7 @@ MonoBehaviour:
     width: 0
     voxels: []
   lodIndex: 0
-  colliderLodIndex: 3
+  colliderLodIndex: 0
   meshGenerator: {fileID: 7200000, guid: f49e3ea65c77e514da3a766c517d0cf6, type: 3}
   visible: 0
   bounds:
@@ -141,5 +141,5 @@ MeshCollider:
   m_Enabled: 1
   serializedVersion: 4
   m_Convex: 0
-  m_CookingOptions: 2
+  m_CookingOptions: -1
   m_Mesh: {fileID: 0}

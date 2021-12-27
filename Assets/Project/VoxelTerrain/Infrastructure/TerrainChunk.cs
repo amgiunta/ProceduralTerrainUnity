@@ -48,7 +48,7 @@ namespace VoxelTerrain {
             meshes = new Dictionary<int, Mesh>();
         }
 
-        public void Update()
+        public void LateUpdate()
         {
             SetVisible();
             DetectLod();
@@ -62,14 +62,11 @@ namespace VoxelTerrain {
         }
 
         private void DetectLod() {
-            if (meshCollider.sharedMesh == null) {
-                if (meshes.ContainsKey(colliderLodIndex))
-                {
-                    if (meshCollider.sharedMesh != meshes[colliderLodIndex])
-                    {
-                        meshCollider.sharedMesh = meshes[colliderLodIndex];
-                    }
-                }
+            float camDist = Vector3.Distance(transform.position, gameCamera.transform.position);
+
+            if (meshes.ContainsKey(colliderLodIndex) && camDist < TerrainManager.instance.lodRanges[colliderLodIndex] && meshCollider.sharedMesh == null)
+            {
+                meshCollider.sharedMesh = meshes[colliderLodIndex];
             }
 
             if (!gameCamera) {
@@ -77,7 +74,6 @@ namespace VoxelTerrain {
                 return;
             }
 
-            float camDist = Vector3.Distance(transform.position, gameCamera.transform.position);
 
             int i = 0;
             foreach (float lodRange in TerrainManager.instance.lodRanges) {

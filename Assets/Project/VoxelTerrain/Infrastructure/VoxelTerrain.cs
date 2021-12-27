@@ -71,6 +71,8 @@ namespace VoxelTerrain {
             public abstract void QueueChunk(Chunk chunk);
             public abstract void QueueChunks(List<Chunk> chunks);
             public abstract void ResolveJobs(chunkProcessCallback onProcessComplete);
+
+            protected List<JobHandle> disposedJobs;
         }
 
         public class PerlinTerrainGenerator : Generator {
@@ -92,6 +94,7 @@ namespace VoxelTerrain {
 
                 runningJobs = new Dictionary<JobHandle, PerlinGeneratorJobV2>();
                 rand = new System.Random(settings.seed);
+                disposedJobs = new List<JobHandle>();
             }
 
             public override void QueueChunk(Chunk chunk)
@@ -165,6 +168,66 @@ namespace VoxelTerrain {
                 Profiler.EndSample();
             }
 
+            public virtual void ResolveAllCloseJobs(int2 point, float maxDistance, chunkProcessCallback onChunkComplete, int maxChunks = 0) {
+
+                int count = 0;
+                foreach (var process in runningJobs) {
+                    float distance = math.distance(point, process.Value.chunkPosition);
+
+                    if (maxChunks != 0 && count >= maxChunks) { continue; }
+                    else if (distance > maxDistance || !process.Key.IsCompleted) { continue; }
+                    process.Key.Complete();
+
+                    try
+                    {
+                        onChunkComplete(
+                                process.Value.chunkPosition,
+                                process.Value.voxels.ToArray(),
+                                process.Value.lodIndex
+                            );
+
+                        process.Value.voxels.Dispose();
+                        process.Value.biomes.Dispose();
+
+                        disposedJobs.Add(process.Key);
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogWarning($"Attempeted to use job data for {process.Value.chunkPosition} and dispose, but job was already disposed. Ignoring. {e.Message}");
+                    }
+                    count++;
+                }
+                RemoveDisposedJobs();
+            }
+
+            public virtual void ResolveAllCompleteJobs(chunkProcessCallback onChunkComplete, MonoBehaviour sceneObject) {
+                foreach (var process in runningJobs) {
+                    if (!process.Key.IsCompleted) { continue; }
+
+                    process.Key.Complete();
+
+                    try
+                    {
+                        onChunkComplete(
+                                process.Value.chunkPosition,
+                                process.Value.voxels.ToArray(),
+                                process.Value.lodIndex
+                            );
+
+                        process.Value.voxels.Dispose();
+                        process.Value.biomes.Dispose();
+
+                        disposedJobs.Add(process.Key);
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogWarning($"Attempeted to use job data for {process.Value.chunkPosition} and dispose, but job was already disposed. Ignoring. {e.Message}");
+                    }
+                }
+
+                RemoveDisposedJobs();
+            }
+
             public override void ResolveJobs(chunkProcessCallback onChunkComplete)
             {
                 foreach (var process in runningJobs)
@@ -184,11 +247,18 @@ namespace VoxelTerrain {
                 runningJobs.Clear();
             }
 
+            public virtual void RemoveDisposedJobs() {
+                foreach (JobHandle job in disposedJobs) {
+                    runningJobs.Remove(job);
+                }
+
+                disposedJobs.Clear();
+            }
+
             public IEnumerator CompleteJob(JobHandle key, chunkProcessCallback onChunkComplete) {
                 var job = runningJobs[key];
 
                 yield return new WaitUntil(() => key.IsCompleted);
-                runningJobs.Remove(key);
 
                 key.Complete();
 
@@ -202,10 +272,14 @@ namespace VoxelTerrain {
 
                     job.voxels.Dispose();
                     job.biomes.Dispose();
+
+                    disposedJobs.Add(key);
                 }
                 catch (Exception e) {
-                    Debug.LogWarning($"Attempeted to use job data and dispose, but job was already disposed. Ignoring. {e.Message}");
+                    Debug.LogWarning($"Attempeted to use job data for {job.chunkPosition} and dispose, but job was already disposed. Ignoring. {e.Message}");
                 }
+
+                RemoveDisposedJobs();
             }
         }
 
