@@ -60,7 +60,8 @@ MonoBehaviour:
     voxels: []
   lodIndex: 0
   colliderLodIndex: 0
-  meshGenerator: {fileID: 7200000, guid: f49e3ea65c77e514da3a766c517d0cf6, type: 3}
+  meshGenerator: {fileID: 7200000, guid: 89e658409fbba564ca9bafffed60112c, type: 3}
+  colliderGenerator: {fileID: 7200000, guid: f49e3ea65c77e514da3a766c517d0cf6, type: 3}
   visible: 0
   bounds:
     m_Center: {x: 0, y: 0, z: 0}

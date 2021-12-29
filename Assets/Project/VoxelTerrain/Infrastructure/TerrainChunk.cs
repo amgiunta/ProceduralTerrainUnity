@@ -16,6 +16,7 @@ namespace VoxelTerrain {
         public int lodIndex = 0;
         public int colliderLodIndex = 3;
         public ComputeShader meshGenerator;
+        public ComputeShader colliderGenerator;
 
         [HideInInspector]
         public bool visible = false;
@@ -64,11 +65,6 @@ namespace VoxelTerrain {
         private void DetectLod() {
             float camDist = Vector3.Distance(transform.position, gameCamera.transform.position);
 
-            if (meshes.ContainsKey(colliderLodIndex) && camDist < TerrainManager.instance.lodRanges[colliderLodIndex] && meshCollider.sharedMesh == null)
-            {
-                meshCollider.sharedMesh = meshes[colliderLodIndex];
-            }
-
             if (!gameCamera) {
                 ChangeLod(TerrainManager.instance.lodRanges.Count - 1);
                 return;
@@ -110,6 +106,10 @@ namespace VoxelTerrain {
             this.chunk = chunk;
 
             transform.position = new Vector3(chunk.gridPosition.x, 0f, chunk.gridPosition.y) * (chunk.grid.voxelSize * chunk.chunkWidth);
+
+            if (meshCollider.sharedMesh == null && chunk.lods.ContainsKey(colliderLodIndex)) {
+                GenerateColliderMesh();
+            }
         }
 
         public bool GenerateChunkMesh(int lodIndex) {
@@ -197,6 +197,66 @@ namespace VoxelTerrain {
 
             Profiler.EndSample();
             return true;
+        }
+
+        public void GenerateColliderMesh() {
+            Profiler.BeginSample("Generate Collider Mesh");
+            Profiler.BeginSample("Initialize Collider Mesh");
+            // Initializations
+            int sizeVector3 = sizeof(float) * 3;
+            int sizeVoxel = (sizeof(int) * 3) + (sizeVector3 * 4);
+
+            float voxelWidth = (chunk.grid.voxelSize * (chunk.chunkWidth / chunk.lods[colliderLodIndex].width));
+
+            float3[] verts = new float3[chunk.lods[colliderLodIndex].voxels.Length + (chunk.lods[colliderLodIndex].width * 2) + 1];
+            int[] tris = new int[chunk.lods[colliderLodIndex].voxels.Length * 6];
+
+            // Chunk data buffers
+            ComputeBuffer chunkVoxelBuffer = new ComputeBuffer(chunk.lods[colliderLodIndex].voxels.Length, sizeVoxel);
+            chunkVoxelBuffer.SetData(chunk.lods[colliderLodIndex].voxels);
+
+            // Mesh data buffers
+            ComputeBuffer vertsBuffer = new ComputeBuffer(verts.Length, sizeVector3);
+            ComputeBuffer trisBuffer = new ComputeBuffer(tris.Length, sizeof(uint));
+            vertsBuffer.SetData(verts);
+            trisBuffer.SetData(tris);
+
+            colliderGenerator.SetFloat("voxelSize", voxelWidth);
+            colliderGenerator.SetInt("chunkWidth", chunk.lods[colliderLodIndex].width);
+
+            colliderGenerator.SetBuffer(0, "voxels", chunkVoxelBuffer);
+            colliderGenerator.SetBuffer(0, "verts", vertsBuffer);
+            colliderGenerator.SetBuffer(0, "tris", trisBuffer);
+            Profiler.EndSample();
+
+            Profiler.BeginSample("Generate Collider");
+            // Run computation
+            colliderGenerator.Dispatch(0, chunk.lods[colliderLodIndex].width / 8, chunk.lods[colliderLodIndex].width / 8, 1);
+            Profiler.EndSample();
+
+            Profiler.BeginSample("Read Collider Data");
+            // Read back data
+            vertsBuffer.GetData(verts);
+            trisBuffer.GetData(tris);
+
+            // Use Data
+            Mesh mesh = new Mesh();
+            mesh.name = $"Chunk {chunk.gridPosition} Collider Mesh";
+            mesh.SetVertices(verts.ToVectorArray());
+            mesh.triangles = tris;
+
+            meshCollider.sharedMesh = mesh;
+
+            Profiler.EndSample();
+
+            Profiler.BeginSample("Dispose Collider Data");
+            // Dispose all buffers
+            chunkVoxelBuffer.Dispose();
+            vertsBuffer.Dispose();
+            trisBuffer.Dispose();
+            Profiler.EndSample();
+
+            Profiler.EndSample();
         }
 
         private void OnDrawGizmosSelected()

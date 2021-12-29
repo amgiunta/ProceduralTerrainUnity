@@ -21,6 +21,7 @@ namespace VoxelTerrain {
     public class ChunkLod {
         public int width;
         public Voxel[] voxels;
+        public Texture2D climateTexture;
     }
 
     [System.Serializable]
@@ -66,7 +67,7 @@ namespace VoxelTerrain {
             public Dictionary<JobHandle, IJobParallelFor> runningJobs;
             public int chunkWidth;
 
-            public delegate void chunkProcessCallback(int2 gridPosition, Voxel[] chunkData, int lodIndex);
+            public delegate void chunkProcessCallback(int2 gridPosition, Voxel[] chunkData, Texture2D climateTexture, int lodIndex);
 
             public abstract void QueueChunk(Chunk chunk);
             public abstract void QueueChunks(List<Chunk> chunks);
@@ -100,8 +101,6 @@ namespace VoxelTerrain {
             public override void QueueChunk(Chunk chunk)
             {
                 int lodWidth = chunk.chunkWidth;
-
-                JobHandle previous = default;
                 
                 for (int i = 0; lodWidth >= 8; i++)
                 {
@@ -110,6 +109,7 @@ namespace VoxelTerrain {
                     {
                         biomes = new NativeArray<Biome>(biomes, Allocator.Persistent),
                         voxels = new NativeArray<Voxel>(new Voxel[lodWidth * lodWidth], Allocator.Persistent),
+                        climateMap = new NativeArray<Color>(new Color[lodWidth * lodWidth], Allocator.Persistent),
                         seed = settings.seed,
                         climateSettings = settings,
                         chunkWidth = chunk.chunkWidth,
@@ -118,13 +118,9 @@ namespace VoxelTerrain {
                         chunkPosition = chunk.gridPosition
                     };
 
-                    JobHandle handle = default;
-
-                    handle = job.Schedule(lodWidth * lodWidth, lodWidth);
+                    JobHandle handle = job.Schedule(lodWidth * lodWidth, lodWidth);
 
                     runningJobs.Add(handle, job);
-
-                    previous = handle;
                     lodWidth /= 2;
                 
                 }
@@ -180,14 +176,20 @@ namespace VoxelTerrain {
 
                     try
                     {
+                        Texture2D tex = new Texture2D(process.Value.lodWidth, process.Value.lodWidth);
+                        tex.SetPixels(process.Value.climateMap.ToArray());
+                        tex.Apply();
+
                         onChunkComplete(
                                 process.Value.chunkPosition,
                                 process.Value.voxels.ToArray(),
+                                tex,
                                 process.Value.lodIndex
                             );
 
                         process.Value.voxels.Dispose();
                         process.Value.biomes.Dispose();
+                        process.Value.climateMap.Dispose();
 
                         disposedJobs.Add(process.Key);
                     }
@@ -208,14 +210,20 @@ namespace VoxelTerrain {
 
                     try
                     {
+                        Texture2D tex = new Texture2D(process.Value.lodWidth, process.Value.lodWidth);
+                        tex.SetPixels(process.Value.climateMap.ToArray());
+                        tex.Apply();
+
                         onChunkComplete(
                                 process.Value.chunkPosition,
                                 process.Value.voxels.ToArray(),
+                                tex,
                                 process.Value.lodIndex
                             );
 
                         process.Value.voxels.Dispose();
                         process.Value.biomes.Dispose();
+                        process.Value.climateMap.Dispose();
 
                         disposedJobs.Add(process.Key);
                     }
@@ -234,14 +242,20 @@ namespace VoxelTerrain {
                 {
                     process.Key.Complete();
 
+                    Texture2D tex = new Texture2D(process.Value.lodWidth, process.Value.lodWidth);
+                    tex.SetPixels(process.Value.climateMap.ToArray());
+                    tex.Apply();
+
                     onChunkComplete(
                         process.Value.chunkPosition,
                         process.Value.voxels.ToArray(),
+                        tex,
                         process.Value.lodIndex
                     );
 
                     process.Value.voxels.Dispose();
                     process.Value.biomes.Dispose();
+                    process.Value.climateMap.Dispose();
                 }
 
                 runningJobs.Clear();
@@ -264,14 +278,20 @@ namespace VoxelTerrain {
 
                 try
                 {
+                    Texture2D tex = new Texture2D(job.lodWidth, job.lodWidth);
+                    tex.SetPixels(job.climateMap.ToArray());
+                    tex.Apply();
+
                     onChunkComplete(
                             job.chunkPosition,
                             job.voxels.ToArray(),
+                            tex,
                             job.lodIndex
                         );
 
                     job.voxels.Dispose();
                     job.biomes.Dispose();
+                    job.climateMap.Dispose();
 
                     disposedJobs.Add(key);
                 }
@@ -288,6 +308,7 @@ namespace VoxelTerrain {
         public struct PerlinGeneratorJobV2 : IJobParallelFor {
             [ReadOnly] public NativeArray<Biome> biomes;
             public NativeArray<Voxel> voxels;
+            public NativeArray<Color> climateMap;
             public ClimateSettings climateSettings;
             public int seed;
             public int chunkWidth;
@@ -303,6 +324,10 @@ namespace VoxelTerrain {
                 voxel.y = id / lodWidth;
 
                 float2 climate = TerrainNoise.Climate(voxel.x * stride, voxel.y * stride, climateSettings, chunkPosition, chunkWidth, seed);
+                Color temperatureColor = Color.Lerp(Color.black, Color.red, climate.x);
+                Color moistureColor = Color.Lerp(Color.black, Color.blue, climate.y);
+                climateMap[id] = (temperatureColor + moistureColor) / (climate.x + climate.y);
+
                 voxel.height = (int) TerrainNoise.GetHeightAtPoint(voxel.x, voxel.y, climate, biomes, stride, chunkPosition, chunkWidth, seed);
 
                 for (int n = -1; n <= 1; n++) {

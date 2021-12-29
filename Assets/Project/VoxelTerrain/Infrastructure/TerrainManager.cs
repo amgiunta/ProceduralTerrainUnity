@@ -155,13 +155,14 @@ namespace VoxelTerrain
             Profiler.EndSample();
         }
 
-        private void UpdateChunkObject(int2 gridPosition, Voxel[] chunkData, int lodIndex) {
+        private void UpdateChunkObject(int2 gridPosition, Voxel[] chunkData, Texture2D climateTexture, int lodIndex) {
             Chunk chunk = chunkObjects[gridPosition].chunk;
 
             ChunkLod lod = new ChunkLod()
             {
                 voxels = chunkData,
-                width = (int) Mathf.Sqrt(chunkData.Length)
+                width = (int) Mathf.Sqrt(chunkData.Length),
+                climateTexture = climateTexture
             };
 
             chunk.SetChunkLod(lodIndex, lod);
