@@ -49,6 +49,10 @@ namespace VoxelTerrain {
             meshes = new Dictionary<int, Mesh>();
         }
 
+        public void OnEnable() {
+            meshRend.sharedMaterial = Instantiate<Material>(meshRend.sharedMaterial);
+        }
+
         public void LateUpdate()
         {
             SetVisible();
@@ -93,12 +97,18 @@ namespace VoxelTerrain {
                     if (meshFilter.sharedMesh == meshes[lodIndex]) { return; }
 
                     meshFilter.sharedMesh = meshes[lodIndex];
+                    currentLod = chunk.lods[lodIndex];
+                    meshRend.sharedMaterial.SetTexture("_ClimateTexture", chunk.lods[lodIndex].climateTexture);
+                    meshRend.sharedMaterial.SetTexture("_ColorTexture", chunk.lods[lodIndex].colorTexture);
                 }
             }
             else {
                 if (meshFilter.sharedMesh == meshes[lodIndex]) { return; }
 
                 meshFilter.sharedMesh = meshes[lodIndex];
+                currentLod = chunk.lods[lodIndex];
+                meshRend.sharedMaterial.SetTexture("_ClimateTexture", chunk.lods[lodIndex].climateTexture);
+                meshRend.sharedMaterial.SetTexture("_ColorTexture", chunk.lods[lodIndex].colorTexture);
             }
         }
 
@@ -135,7 +145,8 @@ namespace VoxelTerrain {
             float3[] verts = new float3[(chunk.lods[lodIndex].voxels.Length * 12) + (chunk.lods[lodIndex].width * 8)];
             int[] tris = new int[(chunk.lods[lodIndex].voxels.Length * 18) + (chunk.lods[lodIndex].width * 12)];
             float3[] normals = new float3[(chunk.lods[lodIndex].voxels.Length * 12) + (chunk.lods[lodIndex].width * 8)];
-            float2[] uvs = new float2[(chunk.lods[lodIndex].voxels.Length * 12) + (chunk.lods[lodIndex].width * 8)];
+            float2[] uv0 = new float2[(chunk.lods[lodIndex].voxels.Length * 12) + (chunk.lods[lodIndex].width * 8)];
+            float2[] uv1 = new float2[(chunk.lods[lodIndex].voxels.Length * 12) + (chunk.lods[lodIndex].width * 8)];
 
             // Chunk data buffers
             ComputeBuffer chunkVoxelBuffer = new ComputeBuffer(chunk.lods[lodIndex].voxels.Length, sizeVoxel);
@@ -145,11 +156,13 @@ namespace VoxelTerrain {
             ComputeBuffer vertsBuffer = new ComputeBuffer(verts.Length, sizeVector3);
             ComputeBuffer trisBuffer = new ComputeBuffer(tris.Length, sizeof(int));
             ComputeBuffer normalsBuffer = new ComputeBuffer(normals.Length, sizeVector3);
-            ComputeBuffer uvsBuffer = new ComputeBuffer(uvs.Length, sizeVector2);
+            ComputeBuffer uv0Buffer = new ComputeBuffer(uv0.Length, sizeVector2);
+            ComputeBuffer uv1Buffer = new ComputeBuffer(uv1.Length, sizeVector2);
             vertsBuffer.SetData(verts);
             trisBuffer.SetData(tris);
             normalsBuffer.SetData(normals);
-            uvsBuffer.SetData(uvs);
+            uv0Buffer.SetData(uv0);
+            uv1Buffer.SetData(uv1);
 
             meshGenerator.SetFloat("voxelSize", voxelWidth);
             meshGenerator.SetInt("chunkWidth", chunk.lods[lodIndex].width);
@@ -159,7 +172,8 @@ namespace VoxelTerrain {
             meshGenerator.SetBuffer(0, "verts", vertsBuffer);
             meshGenerator.SetBuffer(0, "tris", trisBuffer);
             meshGenerator.SetBuffer(0, "normals", normalsBuffer);
-            meshGenerator.SetBuffer(0, "uvs", uvsBuffer);
+            meshGenerator.SetBuffer(0, "uv0", uv0Buffer);
+            meshGenerator.SetBuffer(0, "uv1", uv1Buffer);
             Profiler.EndSample();
 
             Profiler.BeginSample("Generate Mesh");
@@ -172,7 +186,8 @@ namespace VoxelTerrain {
             vertsBuffer.GetData(verts);
             trisBuffer.GetData(tris);
             normalsBuffer.GetData(normals);
-            uvsBuffer.GetData(uvs);
+            uv0Buffer.GetData(uv0);
+            uv1Buffer.GetData(uv1);
 
             // Use Data
             meshes[lodIndex].Clear();
@@ -181,7 +196,8 @@ namespace VoxelTerrain {
             meshes[lodIndex].triangles = new int[chunk.lods[lodIndex].voxels.Length * 18];
             meshes[lodIndex].triangles = tris;
             meshes[lodIndex].normals = normals.ToVectorArray();
-            meshes[lodIndex].SetUVs(0, uvs.ToVectorArray());
+            meshes[lodIndex].SetUVs(0, uv0.ToVectorArray());
+            meshes[lodIndex].SetUVs(1, uv1.ToVectorArray());
 
             bounds = new Bounds(transform.position + (meshes[lodIndex].bounds.max / 2), (meshes[lodIndex].bounds.max - meshes[lodIndex].bounds.min));
             Profiler.EndSample();
@@ -192,7 +208,8 @@ namespace VoxelTerrain {
             vertsBuffer.Dispose();
             trisBuffer.Dispose();
             normalsBuffer.Dispose();
-            uvsBuffer.Dispose();
+            uv0Buffer.Dispose();
+            uv1Buffer.Dispose();
             Profiler.EndSample();
 
             Profiler.EndSample();

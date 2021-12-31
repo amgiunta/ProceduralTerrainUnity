@@ -27,6 +27,14 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _ClimateTexture:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _ColorTexture:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _DetailAlbedoMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -71,8 +79,16 @@ Material:
         m_Texture: {fileID: 2800000, guid: 28c72880da56c9448997f421aab93bdd, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _SnowAlbedo:
+        m_Texture: {fileID: 2800000, guid: 7faa6d3228266044681c321d5d668f78, type: 3}
+        m_Scale: {x: 100, y: 100}
+        m_Offset: {x: 0, y: 0}
+    - _SnowNormalMap:
+        m_Texture: {fileID: 2800000, guid: f34829d5f462f014d863ea7280615aa0, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _TopAlbedo:
-        m_Texture: {fileID: 2800000, guid: 33365ccc52155b0408347e241a0a9f38, type: 3}
+        m_Texture: {fileID: 2800000, guid: f3aff223b4e22bc4488b94396d1ee3c4, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _TopNormalMap:
@@ -87,11 +103,19 @@ Material:
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
+    - _MaxSnoMoisture: 1
+    - _MaxSnowMoisture: 1
+    - _MaxSnowTemperature: 0.3
     - _Metallic: 0
+    - _MinSnoMoisture: 0
+    - _MinSnowMoisture: 0
+    - _MinSnowTemperature: 0
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
     - _SmoothnessTextureChannel: 0
+    - _SnowCapHeight: 100
+    - _SnowSpread: 0.277
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _UVSec: 0

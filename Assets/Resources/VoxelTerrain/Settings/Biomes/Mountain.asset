@@ -18,8 +18,8 @@ MonoBehaviour:
   maxMoisture: 0.68
   minMoisture: 0.31
   heightNormalIntensity: 1
-  minTerrainHeight: -30
-  maxTerrainHeight: 100
+  minTerrainHeight: -70
+  maxTerrainHeight: 350
   generatorNoiseScale: {x: 678, y: 670}
   heightNormalNoiseScale: {x: 0.22, y: 0.06}
   persistance: 0.21

@@ -58,6 +58,7 @@ MonoBehaviour:
   currentLod:
     width: 0
     voxels: []
+    climateTexture: {fileID: 0}
   lodIndex: 0
   colliderLodIndex: 0
   meshGenerator: {fileID: 7200000, guid: 89e658409fbba564ca9bafffed60112c, type: 3}

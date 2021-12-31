@@ -468,7 +468,21 @@ namespace VoxelTerrain
             return totalHeight / totalWeight;
         }
 
-        
+        public static Color GetColorAtPoint(NativeArray<Biome> biomes, float2 climate) {
+            Color totalColor = Color.black;
+            float totalWeight = 0;
+
+            foreach (Biome biome in biomes)
+            {
+                float weight = biome.Idealness(climate.x, climate.y);
+                Color color = Color.Lerp(Color.black, biome.color, weight);
+
+                totalColor += color;
+                totalWeight += weight;
+            }
+
+            return totalColor / totalWeight;
+        }
 
         public static void CreateNoiseMap(int chunkWidth, TerrainSettings terrainSettings, Biome biome, ref float[] noiseMap, int startIndex = 0, int stride = 1, float2 offset = default)
         {
@@ -660,11 +674,7 @@ namespace VoxelTerrain
                         int chunkOffset = yOffset + (x * chunkWidth * chunkWidth);
 
                         float2 climate = climateMap[chunkOffset + i];
-
-                        Color temperatureColor = Color.Lerp(Color.black, Color.red, climate.x);
-                        Color moistureColor = Color.Lerp(Color.black, Color.blue, climate.y);
-
-                        values[mapOffet + (i % chunkWidth)] = (temperatureColor + moistureColor) / (climate.x + climate.y);
+                        values[mapOffet + (i % chunkWidth)] = new Color(climate.x, 0, climate.y, 1);
                     }
                 }
             }
