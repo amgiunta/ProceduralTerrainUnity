@@ -8,6 +8,7 @@ using UnityEngine.Events;
 using Unity.Mathematics;
 using VoxelTerrain.Generators;
 using UnityEngine.Profiling;
+using Unity.Jobs.LowLevel.Unsafe;
 
 namespace VoxelTerrain
 {
@@ -15,6 +16,7 @@ namespace VoxelTerrain
     {
         public static TerrainManager instance;
 
+        public int chunkQueueLimit = 100;
         public string worldName = "NewWorld";
         public Grid grid;
 
@@ -28,8 +30,6 @@ namespace VoxelTerrain
 
         public UnityEvent OnStartGeneration;
 
-        private float lastUpdate = 0;
-        private float elapsedTime = 0;
         public Dictionary<int2, Chunk> chunks;
         public Dictionary<int2, TerrainChunk> chunkObjects;
 
@@ -45,7 +45,8 @@ namespace VoxelTerrain
                     _generator = new PerlinTerrainGenerator(
                         biomeStructs,
                         terrainSettings,
-                        grid.chunkSize
+                        grid.chunkSize,
+                        (uint) chunkQueueLimit
                     );
                 }
                 return _generator;
@@ -71,6 +72,7 @@ namespace VoxelTerrain
             Debug.Log(Application.persistentDataPath);
             chunks = new Dictionary<int2, Chunk>();
             chunkObjects = new Dictionary<int2, TerrainChunk>();
+            Debug.Log("Max Jobs: " + JobsUtility.MaxJobThreadCount);
 
             //LoadWorld();
 
@@ -89,20 +91,20 @@ namespace VoxelTerrain
 
         private void FixedUpdate()
         {
-            elapsedTime += Time.fixedDeltaTime;
         }
 
         private void LateUpdate()
         {
+            ResolveChunks();
             //generator.DisposeJobs();
         }
 
         public void StartLoadingChunks(int2 gridPosition) {
             if (!gridPosition.Equals(loadingFromChunk)) {
-                if (loadingRoutine != null) { 
+                
+                if (loadingRoutine != null) {
                     StopCoroutine(loadingRoutine);
                     loadingRoutine = null;
-                    return;
                 }
                 
                 loadingFromChunk = gridPosition;
@@ -110,22 +112,25 @@ namespace VoxelTerrain
             }
         }
 
-        public void ResolveChunks(int2 gridPosition) {
+        public void ResolveChunks() {
             //generator?.ResolveClosestJob(gridPosition, UpdateChunkObject, this);
             //generator?.ResolveAllCompleteJobs(UpdateChunkObject, this);
-            generator?.ResolveAllCloseJobs(gridPosition, renderDistance, UpdateChunkObject, 1000);
-            lastUpdate = elapsedTime;
+            //Debug.Log($"current: {loadingFromChunk}");
+            generator?.ResolveAllCloseJobs(loadingFromChunk, renderDistance, UpdateChunkObject);
         }
 
         public void StartGenerator() {
             OnStartGeneration.Invoke();
         }
 
-        public void InitializeChunk(int2 gridPosition) {
+        public bool InitializeChunk(int2 gridPosition) {
             Profiler.BeginSample("Initialize Chunk Data");
+
+            bool queued = false;
 
             if (!chunks.ContainsKey(gridPosition))
             {
+                Profiler.BeginSample("Create Data Structure");
                 Chunk chunk = new Chunk();
                 chunk.gridPosition.x = gridPosition.x;
                 chunk.gridPosition.y = gridPosition.y;
@@ -140,22 +145,29 @@ namespace VoxelTerrain
                 }
                 chunk.lods = new Dictionary<int, ChunkLod>();
 
-                chunks.Add(gridPosition, chunk);
+                Profiler.EndSample();
 
+                Profiler.BeginSample("Enqueing");
                 if (generator == null)
                 {
                     Debug.LogWarning("generator is null");
                 }
-                generator.QueueChunk(chunk);
+                queued = generator.QueueChunk(chunk);
+                Profiler.EndSample();
 
-                InstantiateChunkObject(chunks[gridPosition]);
+                if (queued)
+                {
+                    chunks.Add(gridPosition, chunk);
+                    InstantiateChunkObject(chunks[gridPosition]);
+                }
             }
-
-
             Profiler.EndSample();
+
+            return queued;
         }
 
-        private void UpdateChunkObject(int2 gridPosition, Voxel[] chunkData, Texture2D climateTexture, Texture2D colorTexture, int lodIndex) {
+        private void UpdateChunkObject(int2 gridPosition, ref Voxel[] chunkData, Texture2D climateTexture, Texture2D colorTexture, int lodIndex) {
+            Profiler.BeginSample("Update Chunk");
             Chunk chunk = chunkObjects[gridPosition].chunk;
 
             ChunkLod lod = new ChunkLod()
@@ -167,8 +179,11 @@ namespace VoxelTerrain
             };
 
             chunk.SetChunkLod(lodIndex, lod);
+            Profiler.EndSample();
 
+            Profiler.BeginSample("Set Chunk");
             chunkObjects[gridPosition].SetChunk(chunk);
+            Profiler.EndSample();
         }
 
         private void InstantiateChunkObject(Chunk chunk) {
@@ -213,8 +228,17 @@ namespace VoxelTerrain
             int dx = 0;
             int dy = -1;
 
+            int maxTries = 100;
+            int tryCount = 0;
+
+            List<int> missed = new List<int>();
+
+            bool done = false;
             for (int i = 0; i < (renderDistance * renderDistance); i++)
             {
+                //Profiler.BeginSample("Queue Chunk");
+                tryCount++;
+                bool queued = false;
                 if (((-renderDistance / 2) < x && x <= (renderDistance / 2)) && ((-renderDistance / 2) < y && y <= (renderDistance / 2)))
                 {
                     int2 chunkLocation = loadingFromChunk + new int2(x, y);
@@ -222,29 +246,49 @@ namespace VoxelTerrain
                     {
                         if (chunks.ContainsKey(chunkLocation))
                         {
+                            queued = true;
+                            tryCount = 0;
                             if (!chunkObjects.ContainsKey(chunkLocation))
                             {
                                 InstantiateChunkObject(chunks[chunkLocation]);
-                                yield return new WaitForSeconds(1f / generatorFrequency);
                             }
                         }
                         else
                         {
-                            InitializeChunk(chunkLocation);
-                            yield return new WaitForSeconds(1f / generatorFrequency);
+                            queued = InitializeChunk(chunkLocation);
+                            tryCount = 0;
+                            yield return new WaitForSeconds(1 / generatorFrequency);
                         }
                     }
                 }
-                if (x == y || (x < 0 && x == -y) || (x > 0 && x == 1 - y))
-                {
-                    int temp = dx;
-                    dx = -dy;
-                    dy = temp;
-                }
+                //Profiler.EndSample();
 
-                x += dx;
-                y += dy;
+                //Profiler.BeginSample("Iterate Pattern");
+                if (queued || tryCount >= maxTries)
+                {
+                    if (x == y || (x < 0 && x == -y) || (x > 0 && x == 1 - y))
+                    {
+                        int temp = dx;
+                        dx = -dy;
+                        dy = temp;
+                    }
+
+                    x += dx;
+                    y += dy;
+                }
+                else if (!missed.Contains(i)) {
+                    missed.Add(i);
+                }
+                //Profiler.EndSample();
+
+                if (i == (renderDistance * renderDistance) - 1) { done = true; }
+                
+                if (done && missed.Count > 0) {
+                    i = missed.First();
+                    yield return new WaitForEndOfFrame();
+                }
             }
+            yield return null;
         }
     }
 

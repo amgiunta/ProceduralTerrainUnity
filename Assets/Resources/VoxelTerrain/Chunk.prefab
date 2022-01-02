@@ -17,7 +17,7 @@ GameObject:
   m_Layer: 6
   m_Name: Chunk
   m_TagString: Terrain
-  m_Icon: {fileID: 0}
+  m_Icon: {fileID: -5487077368411116049, guid: 0000000000000000d000000000000000, type: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
@@ -47,6 +47,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4efdfcb0b5e1ff54b956c1b7e2b375d6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  renderFrequency: 1
   chunk:
     gridPosition:
       x: 0
@@ -59,6 +60,7 @@ MonoBehaviour:
     width: 0
     voxels: []
     climateTexture: {fileID: 0}
+    colorTexture: {fileID: 0}
   lodIndex: 0
   colliderLodIndex: 0
   meshGenerator: {fileID: 7200000, guid: 89e658409fbba564ca9bafffed60112c, type: 3}
@@ -143,5 +145,5 @@ MeshCollider:
   m_Enabled: 1
   serializedVersion: 4
   m_Convex: 0
-  m_CookingOptions: -1
+  m_CookingOptions: 0
   m_Mesh: {fileID: 0}

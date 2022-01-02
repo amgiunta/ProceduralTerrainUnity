@@ -12,6 +12,7 @@ namespace VoxelTerrain
     {
         SerializedObject so;
         SerializedProperty propWorldName;
+        SerializedProperty propChunkQueueLimit;
         SerializedProperty propGeneratorFrequency;
         SerializedProperty propBiomes;
         SerializedProperty propRenderDistance;
@@ -53,6 +54,7 @@ namespace VoxelTerrain
 
             propGrid = so.FindProperty("grid");
             propWorldName = so.FindProperty("worldName");
+            propChunkQueueLimit = so.FindProperty("chunkQueueLimit");
             propChunkWidth = propGrid.FindPropertyRelative("chunkSize");
             propVoxelSize = propGrid.FindPropertyRelative("voxelSize");
             propGeneratorFrequency = so.FindProperty("generatorFrequency");
@@ -74,6 +76,7 @@ namespace VoxelTerrain
             EditorGUI.BeginChangeCheck();
 
             EditorGUILayout.PropertyField(propWorldName);
+            EditorGUILayout.PropertyField(propChunkQueueLimit);
             EditorGUILayout.PropertyField(propChunkWidth);
             EditorGUILayout.PropertyField(propVoxelSize);
             EditorGUILayout.PropertyField(propGeneratorFrequency);

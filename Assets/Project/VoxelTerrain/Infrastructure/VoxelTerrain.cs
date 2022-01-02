@@ -26,7 +26,7 @@ namespace VoxelTerrain {
     }
 
     [System.Serializable]
-    public struct Chunk {
+    public class Chunk {
         public int2 gridPosition;
         public Grid grid;
         public int chunkWidth;
@@ -68,9 +68,9 @@ namespace VoxelTerrain {
             public Dictionary<JobHandle, IJobParallelFor> runningJobs;
             public int chunkWidth;
 
-            public delegate void chunkProcessCallback(int2 gridPosition, Voxel[] chunkData, Texture2D climateTexture, Texture2D colorTexture, int lodIndex);
+            public delegate void chunkProcessCallback(int2 gridPosition, ref Voxel[] chunkData, Texture2D climateTexture, Texture2D colorTexture, int lodIndex);
 
-            public abstract void QueueChunk(Chunk chunk);
+            public abstract bool QueueChunk(Chunk chunk);
             public abstract void QueueChunks(List<Chunk> chunks);
             public abstract void ResolveJobs(chunkProcessCallback onProcessComplete);
 
@@ -83,50 +83,75 @@ namespace VoxelTerrain {
             public Biome[] biomes;
             TerrainSettings settings;
 
-            private System.Random rand;
+            private uint queueLimit = 100;
 
             public PerlinTerrainGenerator(
                 Biome[] biomes,
                 TerrainSettings settings,
-                int chunkWidth = 64
+                int chunkWidth = 64,
+                uint queueLimit = 100
              ) {
                 this.chunkWidth = chunkWidth;
                 this.biomes = biomes;
                 this.settings = settings;
+                this.queueLimit = queueLimit;
 
                 runningJobs = new Dictionary<JobHandle, PerlinGeneratorJobV2>();
-                rand = new System.Random(settings.seed);
                 disposedJobs = new List<JobHandle>();
             }
 
-            public override void QueueChunk(Chunk chunk)
+            public override bool QueueChunk(Chunk chunk)
             {
+                if (queueLimit != 0 && runningJobs.Count >= queueLimit) { return false; }
+
+                Profiler.BeginSample("Queue Chunk");
                 int lodWidth = chunk.chunkWidth;
                 
                 for (int i = 0; lodWidth >= 8; i++)
                 {
+                    Profiler.BeginSample("Create Job");
+                    PerlinGeneratorJobV2 job = new PerlinGeneratorJobV2 { };
 
-                    PerlinGeneratorJobV2 job = new PerlinGeneratorJobV2
-                    {
-                        biomes = new NativeArray<Biome>(biomes, Allocator.Persistent),
-                        voxels = new NativeArray<Voxel>(new Voxel[lodWidth * lodWidth], Allocator.Persistent),
-                        climateMap = new NativeArray<Color>(new Color[lodWidth * lodWidth], Allocator.Persistent),
-                        colorMap = new NativeArray<Color>(new Color[lodWidth * lodWidth], Allocator.Persistent),
-                        seed = settings.seed,
-                        climateSettings = settings,
-                        chunkWidth = chunk.chunkWidth,
-                        lodWidth = lodWidth,
-                        lodIndex = i,
-                        chunkPosition = chunk.gridPosition
-                    };
+                    Profiler.BeginSample("Arrays");
+                    Profiler.BeginSample("biomes");
+                    job.biomes = new NativeArray<Biome>(biomes, Allocator.Persistent);
+                    Profiler.EndSample();
 
+                    Profiler.BeginSample("voxels");
+                    job.voxels = new NativeArray<Voxel>(lodWidth * lodWidth, Allocator.Persistent);
+                    Profiler.EndSample();
+
+                    Profiler.BeginSample("climateMap");
+                    job.climateMap = new NativeArray<Color>(lodWidth * lodWidth, Allocator.Persistent);
+                    Profiler.EndSample();
+
+                    Profiler.BeginSample("colorMap");
+                    job.colorMap = new NativeArray<Color>(lodWidth * lodWidth, Allocator.Persistent);
+                    Profiler.EndSample();
+                    Profiler.EndSample();
+
+                    Profiler.BeginSample("Values");
+                    job.seed = settings.seed;
+                    job.climateSettings = settings;
+                    job.chunkWidth = chunk.chunkWidth;
+                    job.lodWidth = lodWidth;
+                    job.lodIndex = i;
+                    job.chunkPosition = chunk.gridPosition;
+                    Profiler.EndSample();
+                    
+                    Profiler.EndSample();
+
+                    Profiler.BeginSample("Schedule Job");
                     JobHandle handle = job.Schedule(lodWidth * lodWidth, lodWidth);
 
                     runningJobs.Add(handle, job);
+                    Profiler.EndSample();
                     lodWidth /= 2;
                 
                 }
-                
+                Profiler.EndSample();
+
+                return true;
             }
 
             public override void QueueChunks(List<Chunk> chunks)
@@ -167,6 +192,7 @@ namespace VoxelTerrain {
             }
 
             public virtual void ResolveAllCloseJobs(int2 point, float maxDistance, chunkProcessCallback onChunkComplete, int maxChunks = 0) {
+                Profiler.BeginSample("Resolve Closest Chunks");
 
                 int count = 0;
                 foreach (var process in runningJobs) {
@@ -178,6 +204,8 @@ namespace VoxelTerrain {
 
                     try
                     {
+                        Profiler.BeginSample("Creating Textures");
+
                         Texture2D climateTexture = new Texture2D(process.Value.lodWidth, process.Value.lodWidth);
                         climateTexture.SetPixels(process.Value.climateMap.ToArray());
                         climateTexture.Apply();
@@ -186,18 +214,28 @@ namespace VoxelTerrain {
                         colorTexture.SetPixels(process.Value.colorMap.ToArray());
                         colorTexture.Apply();
 
+                        Profiler.EndSample();
+
+                        Profiler.BeginSample("Convert to Array");
+                        Voxel[] voxels = process.Value.voxels.ToArray();
+                        Profiler.EndSample();
+                        Profiler.BeginSample("Chunk Callback");
                         onChunkComplete(
                                 process.Value.chunkPosition,
-                                process.Value.voxels.ToArray(),
+                                ref voxels,
                                 climateTexture,
                                 colorTexture,
                                 process.Value.lodIndex
                             );
 
+                        Profiler.EndSample();
+
+                        Profiler.BeginSample("Dispose Native Arrays");
                         process.Value.voxels.Dispose();
                         process.Value.biomes.Dispose();
                         process.Value.climateMap.Dispose();
                         process.Value.colorMap.Dispose();
+                        Profiler.EndSample();
 
                         disposedJobs.Add(process.Key);
                     }
@@ -208,6 +246,8 @@ namespace VoxelTerrain {
                     count++;
                 }
                 RemoveDisposedJobs();
+
+                Profiler.EndSample();
             }
 
             public virtual void ResolveAllCompleteJobs(chunkProcessCallback onChunkComplete, MonoBehaviour sceneObject) {
@@ -226,9 +266,11 @@ namespace VoxelTerrain {
                         colorTexture.SetPixels(process.Value.colorMap.ToArray());
                         colorTexture.Apply();
 
+                        Voxel[] voxels = process.Value.voxels.ToArray();
+
                         onChunkComplete(
                                 process.Value.chunkPosition,
-                                process.Value.voxels.ToArray(),
+                                ref voxels,
                                 climateTexture,
                                 colorTexture,
                                 process.Value.lodIndex
@@ -264,9 +306,10 @@ namespace VoxelTerrain {
                     colorTexture.SetPixels(process.Value.colorMap.ToArray());
                     colorTexture.Apply();
 
+                    Voxel[] voxels = process.Value.voxels.ToArray();
                     onChunkComplete(
                         process.Value.chunkPosition,
-                        process.Value.voxels.ToArray(),
+                        ref voxels,
                         climateTexture,
                         colorTexture,
                         process.Value.lodIndex
@@ -306,9 +349,10 @@ namespace VoxelTerrain {
                     colorTexture.SetPixels(job.colorMap.ToArray());
                     colorTexture.Apply();
 
+                    Voxel[] voxels = job.voxels.ToArray();
                     onChunkComplete(
                             job.chunkPosition,
-                            job.voxels.ToArray(),
+                            ref voxels,
                             climateTexture,
                             colorTexture,
                             job.lodIndex
