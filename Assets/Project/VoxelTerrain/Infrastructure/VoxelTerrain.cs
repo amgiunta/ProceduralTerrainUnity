@@ -63,6 +63,23 @@ namespace VoxelTerrain {
         public float3 normalWest;
     }
 
+    [System.Serializable]
+    public struct GroundScatterData {
+        public float3 position;
+        public int2 gridPosition;
+        public string prefabPath;
+
+        public Vector3 GetWorldPosition(Grid grid) {
+            Vector3 gridWorldPos = new Vector3(gridPosition.x * grid.chunkSize * grid.voxelSize, 0, gridPosition.y * grid.chunkSize * grid.voxelSize);
+            return gridWorldPos + position.ToVector3();
+        }
+
+        public void Instantiate(Grid grid, Transform parent = null) {
+            Vector3 worldPosition = GetWorldPosition(grid);
+            GameObject.Instantiate(Resources.Load<GameObject>(prefabPath), worldPosition, quaternion.identity, parent );
+        }
+    }
+
     namespace Generators {
         public abstract class Generator {
             public Dictionary<JobHandle, IJobParallelFor> runningJobs;
@@ -438,6 +455,30 @@ namespace VoxelTerrain {
             }
         }
 
+        [BurstCompile(Debug = true)]
+        public struct GroundScatterJob : IJobParallelFor {
+            [ReadOnly] public NativeArray<Biome> biomes;
+            [ReadOnly] public NativeArray<Voxel> voxels;
+            public NativeArray<GroundScatterData> groundScatter;
+            public float scatterDensity;
+            public ClimateSettings climateSettings;
+            public int2 chunkPosition;
+            public int chunkWidth;
+            public int seed;
+            public string prefabPath;
+
+            public void Execute(int id) {
+                for (float y = 0; y < chunkWidth; y += (1 / scatterDensity)) {
+                    for (float x = 0; x < chunkWidth; x += (1 / scatterDensity)) {
+                        float2 climate = TerrainNoise.Climate(x, y, climateSettings, chunkPosition, chunkWidth, seed);
+                        float height = TerrainNoise.GetHeightAtPoint(x, y, climate, biomes, 1, chunkPosition, chunkWidth, seed);
+                        //float3
+                    }
+                }
+            }
+        }
+
+        [System.Obsolete("Use PerlinGeneratorV2 instead.")]
         [BurstCompile(Debug = true)]
         public struct PerlinTerrainGeneratorJob : IJobParallelFor {
             public NativeArray<Voxel> chunkData;
