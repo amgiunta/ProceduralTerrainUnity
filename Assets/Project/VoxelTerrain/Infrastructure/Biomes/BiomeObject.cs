@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Mathematics;
+using Unity.Entities;
 using Unity.Collections;
 
 namespace VoxelTerrain
@@ -90,7 +91,6 @@ namespace VoxelTerrain
                 persistance = other.persistance,
                 lancunarity = other.lancunarity,
                 octaves = other.octaves
-                
             };
         }
 

@@ -20,8 +20,9 @@ namespace VoxelTerrain
         public string worldName = "NewWorld";
         public Grid grid;
 
-        public float generatorFrequency = 0.02f;     
+        public float generatorFrequency = 0.02f;
 
+        public List<GroundScatterAuthor> groundScatter;
         public List<BiomeObject> biomes;
         public TerrainSettings terrainSettings;
 
@@ -35,15 +36,10 @@ namespace VoxelTerrain
 
         private PerlinTerrainGenerator generator {
             get {
-                Biome[] biomeStructs = new Biome[biomes.Count];
-
-                for (int i = 0; i < biomes.Count; i++) {
-                    biomeStructs[i] = biomes[i];
-                }
 
                 if (_generator == null) {
                     _generator = new PerlinTerrainGenerator(
-                        biomeStructs,
+                        biomes.ToArray(),
                         terrainSettings,
                         grid.chunkSize,
                         (uint) chunkQueueLimit
@@ -55,7 +51,7 @@ namespace VoxelTerrain
         public WorldSaveData saveData;
 
         private PerlinTerrainGenerator _generator;
-        private int2 loadingFromChunk = new int2(int.MaxValue, int.MaxValue);
+        public int2 loadingFromChunk = new int2(int.MaxValue, int.MaxValue);
         private Coroutine loadingRoutine = null;
 
         private void Awake()
@@ -69,6 +65,7 @@ namespace VoxelTerrain
         // Start is called before the first frame update
         void Start()
         {
+            Debug.Log(groundScatter.Count);
             Debug.Log(Application.persistentDataPath);
             chunks = new Dictionary<int2, Chunk>();
             chunkObjects = new Dictionary<int2, TerrainChunk>();

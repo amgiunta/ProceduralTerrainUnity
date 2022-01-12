@@ -25,3 +25,6 @@ MonoBehaviour:
   persistance: 0.11
   lancunarity: 6.28
   octaves: 4
+  groundScatter:
+  - {fileID: 7602585808842905494, guid: 7412116cdc670834a997aaa9b6cba984, type: 3}
+  - {fileID: 7602585808842905494, guid: 15d220bbfad5ef54ca2f8b8092338da3, type: 3}

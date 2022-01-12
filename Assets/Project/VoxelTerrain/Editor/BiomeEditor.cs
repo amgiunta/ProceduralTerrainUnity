@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
+using Unity.Entities;
 
 namespace VoxelTerrain
 {
@@ -80,6 +81,8 @@ namespace VoxelTerrain
 
             if (EditorGUI.EndChangeCheck())
             {
+                so.ApplyModifiedProperties();
+
                 float[] noiseMap = new float[previewChunkSize * previewChunkSize];
                 TerrainNoise.CreateNoiseMap(
                     previewChunkSize,
@@ -97,7 +100,7 @@ namespace VoxelTerrain
             previewStyle.stretchWidth = true;
             GUILayout.Label(previewTexture, previewStyle);
 
-            so.ApplyModifiedProperties();
+            
         }
     }
 }

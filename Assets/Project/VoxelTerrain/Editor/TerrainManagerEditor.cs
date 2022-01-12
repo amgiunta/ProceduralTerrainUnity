@@ -19,6 +19,7 @@ namespace VoxelTerrain
         SerializedProperty propLodRanges;
         SerializedProperty propOnStartGeneration;
         SerializedProperty propTerrainSettings;
+        SerializedProperty propGroundScatter;
 
         SerializedProperty propGrid;
         SerializedProperty propChunkWidth;
@@ -63,6 +64,7 @@ namespace VoxelTerrain
             propBiomes = so.FindProperty("biomes");
             propLodRanges = so.FindProperty("lodRanges");
             propOnStartGeneration = so.FindProperty("OnStartGeneration");
+            propGroundScatter = so.FindProperty("groundScatter");
 
             preview = new MapPreview(new int2(mapPreviewSize.x, mapPreviewSize.y), propChunkWidth.intValue, settings, biomes.ToArray());
         }
@@ -82,6 +84,7 @@ namespace VoxelTerrain
             EditorGUILayout.PropertyField(propGeneratorFrequency);
             EditorGUILayout.PropertyField(propRenderDistance);
             EditorGUILayout.PropertyField(propTerrainSettings);
+            EditorGUILayout.PropertyField(propGroundScatter);
             EditorGUILayout.PropertyField(propBiomes);
             EditorGUILayout.PropertyField(propLodRanges);
             EditorGUILayout.PropertyField(propOnStartGeneration);

@@ -307,7 +307,7 @@ namespace VoxelTerrain {
                     else if (!request.done) { Debug.Log("Not done yet..."); return; }
 
                     Profiler.BeginSample("Vert Data");
-                    mesh.SetVertices(computeData.GetBuffer<Vector3>("verts"));
+                    mesh?.SetVertices(computeData.GetBuffer<Vector3>("verts"));
                     computeData.DisposeBuffer("verts");
                     computeData.DisposeBuffer("chunk_voxel_buffer");
                     Profiler.EndSample();
@@ -317,9 +317,9 @@ namespace VoxelTerrain {
                         else if (!request.done) { Debug.Log("Not done yet..."); return; }
 
                         Profiler.BeginSample("Tri Data");
-                        mesh.SetIndexBufferParams(computeData.GetBuffer("tris").count, IndexFormat.UInt32);
-                        mesh.SetIndexBufferData(request.GetData<int>(), 0, 0, computeData.GetBuffer("tris").count);
-                        mesh.SetSubMesh(0, new SubMeshDescriptor(0, computeData.GetBuffer("tris").count));
+                        mesh?.SetIndexBufferParams(computeData.GetBuffer("tris").count, IndexFormat.UInt32);
+                        mesh?.SetIndexBufferData(request.GetData<int>(), 0, 0, computeData.GetBuffer("tris").count);
+                        mesh?.SetSubMesh(0, new SubMeshDescriptor(0, computeData.GetBuffer("tris").count));
                         computeData.DisposeBuffer("tris");
                         Profiler.EndSample();
 

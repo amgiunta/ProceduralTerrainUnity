@@ -7,8 +7,13 @@ using System.Collections.Generic;
 using Unity.Burst;
 using Unity.Jobs;
 using Unity.Mathematics;
+using Unity.Entities;
+using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.Profiling;
+using VoxelTerrain.ECS.Entities;
+using VoxelTerrain.ECS.Systems;
+using VoxelTerrain.ECS.Components;
 
 namespace VoxelTerrain {
     [System.Serializable]
@@ -63,23 +68,6 @@ namespace VoxelTerrain {
         public float3 normalWest;
     }
 
-    [System.Serializable]
-    public struct GroundScatterData {
-        public float3 position;
-        public int2 gridPosition;
-        public string prefabPath;
-
-        public Vector3 GetWorldPosition(Grid grid) {
-            Vector3 gridWorldPos = new Vector3(gridPosition.x * grid.chunkSize * grid.voxelSize, 0, gridPosition.y * grid.chunkSize * grid.voxelSize);
-            return gridWorldPos + position.ToVector3();
-        }
-
-        public void Instantiate(Grid grid, Transform parent = null) {
-            Vector3 worldPosition = GetWorldPosition(grid);
-            GameObject.Instantiate(Resources.Load<GameObject>(prefabPath), worldPosition, quaternion.identity, parent );
-        }
-    }
-
     namespace Generators {
         public abstract class Generator {
             public Dictionary<JobHandle, IJobParallelFor> runningJobs;
@@ -97,21 +85,33 @@ namespace VoxelTerrain {
         public class PerlinTerrainGenerator : Generator {
             new public Dictionary<JobHandle, PerlinGeneratorJobV2> runningJobs;
 
+            public BiomeObject[] biomeObjects;
             public Biome[] biomes;
             TerrainSettings settings;
 
             private uint queueLimit = 100;
 
+            private World defaultWorld;
+            private EntityManager entityManager;
+
             public PerlinTerrainGenerator(
-                Biome[] biomes,
+                BiomeObject[] biomeObjects,
                 TerrainSettings settings,
                 int chunkWidth = 64,
                 uint queueLimit = 100
              ) {
+                this.biomeObjects = biomeObjects;
+                this.biomes = new Biome[biomeObjects.Length];
+                for (int i = 0; i < biomeObjects.Length; i++) {
+                    biomes[i] = biomeObjects[i];
+                }
+
                 this.chunkWidth = chunkWidth;
-                this.biomes = biomes;
                 this.settings = settings;
                 this.queueLimit = queueLimit;
+
+                defaultWorld = World.DefaultGameObjectInjectionWorld;
+                entityManager = defaultWorld.EntityManager;
 
                 runningJobs = new Dictionary<JobHandle, PerlinGeneratorJobV2>();
                 disposedJobs = new List<JobHandle>();
@@ -452,29 +452,6 @@ namespace VoxelTerrain {
                 }
 
                 voxels[id] = voxel;
-            }
-        }
-
-        [BurstCompile(Debug = true)]
-        public struct GroundScatterJob : IJobParallelFor {
-            [ReadOnly] public NativeArray<Biome> biomes;
-            [ReadOnly] public NativeArray<Voxel> voxels;
-            public NativeArray<GroundScatterData> groundScatter;
-            public float scatterDensity;
-            public ClimateSettings climateSettings;
-            public int2 chunkPosition;
-            public int chunkWidth;
-            public int seed;
-            public string prefabPath;
-
-            public void Execute(int id) {
-                for (float y = 0; y < chunkWidth; y += (1 / scatterDensity)) {
-                    for (float x = 0; x < chunkWidth; x += (1 / scatterDensity)) {
-                        float2 climate = TerrainNoise.Climate(x, y, climateSettings, chunkPosition, chunkWidth, seed);
-                        float height = TerrainNoise.GetHeightAtPoint(x, y, climate, biomes, 1, chunkPosition, chunkWidth, seed);
-                        //float3
-                    }
-                }
             }
         }
 

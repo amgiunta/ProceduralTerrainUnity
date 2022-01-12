@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Unity.Mathematics;
+using Unity.Entities;
 using VoxelTerrain;
+using VoxelTerrain.ECS.Systems;
 
 public class PlayerController : MonoBehaviour
 {
@@ -69,7 +71,7 @@ public class PlayerController : MonoBehaviour
 
     private void LateUpdate()
     {
-
+        TerrainControlSystem.instance.CreateChunks(TerrainManager.instance.renderDistance, gridPosition, TerrainManager.instance.grid);
     }
 
     private void FixedUpdate()

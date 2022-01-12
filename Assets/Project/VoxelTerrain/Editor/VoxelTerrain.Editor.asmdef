@@ -3,7 +3,9 @@
     "rootNamespace": "VoxelTerrain",
     "references": [
         "GUID:d8b63aba1907145bea998dd612889d6b",
-        "GUID:36854c54e46c0cc488032fbc993f96c8"
+        "GUID:36854c54e46c0cc488032fbc993f96c8",
+        "GUID:734d92eba21c94caba915361bd5ac177",
+        "GUID:8819f35a0fc84499b990e90a4ca1911f"
     ],
     "includePlatforms": [
         "Editor"

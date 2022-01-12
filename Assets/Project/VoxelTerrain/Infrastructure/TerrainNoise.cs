@@ -468,6 +468,25 @@ namespace VoxelTerrain
             return totalHeight / totalWeight;
         }
 
+        public static float GetHeightAtPoint(float x, float y, float2 climate, NativeArray<Biome>.ReadOnly biomes, int stride, float2 chunkPosition, int chunkWidth, int seed)
+        {
+            float totalHeight = 0;
+            float totalWeight = 0;
+
+            for (int i = 0; i < biomes.Length; i++) {
+                Biome biome = biomes[i];
+
+                float noise = biome.GetNoiseAtPoint(x, y, stride, chunkPosition * chunkWidth, seed);
+                float height = math.remap(0, 1, biome.minTerrainHeight, biome.maxTerrainHeight, noise);
+                float weight = biome.Idealness(climate.x, climate.y);
+
+                totalHeight += height * weight;
+                totalWeight += weight;
+            }
+
+            return totalHeight / totalWeight;
+        }
+
         public static Color GetColorAtPoint(NativeArray<Biome> biomes, float2 climate) {
             Color totalColor = Color.black;
             float totalWeight = 0;
@@ -551,6 +570,21 @@ namespace VoxelTerrain
             moisture = math.remap(0, 1, climateSettings.minMoisture, climateSettings.maxMoisture, moisture);
 
             return new float2(temperature, moisture);
+        }
+
+        public static float ClimateIdealness(float2 minClimate, float2 maxClimate, float2 climate) {
+            if (minClimate.Equals(float2.zero) && maxClimate.Equals(float2.zero)) { return 0; }
+
+            float idealTemperature = minClimate.x + ((maxClimate.x - minClimate.x) / 2);
+            float idealMoisture = minClimate.y + ((maxClimate.y - minClimate.y) / 2);
+
+            float tempDistance = math.abs(climate.x - idealTemperature);
+            float moisDistance = math.abs(climate.y - idealMoisture);
+
+            float tempIdealness = math.clamp(math.remap(maxClimate.x - minClimate.x, 0f, 0f, 1f, tempDistance), 0, 1);
+            float moisIdealness = math.clamp(math.remap(maxClimate.y - minClimate.y, 0f, 0f, 1f, moisDistance), 0, 1);
+
+            return tempIdealness * moisIdealness;
         }
 
         public static void CreateClimateMap(int chunkWidth, ref float2[] climateMap, int startIndex, TerrainSettings settings, float2 gridPosition = default)
