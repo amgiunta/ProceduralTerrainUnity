@@ -1,13 +1,9 @@
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using Unity.Entities;
-using Unity.Collections;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.Rendering;
 using Unity.Jobs;
-using UnityEngine;
 using VoxelTerrain.ECS.Components;
 
 namespace VoxelTerrain
@@ -65,7 +61,9 @@ namespace VoxelTerrain
                     
                     meshData = new RenderMesh {
                         mesh = groundScatterAuthor.mesh,
-                        material = groundScatterAuthor.material
+                        material = groundScatterAuthor.material,
+                        castShadows = UnityEngine.Rendering.ShadowCastingMode.On,
+                        receiveShadows = true
                     };
 
                     entityManager.SetSharedComponentData(prefab, meshData);

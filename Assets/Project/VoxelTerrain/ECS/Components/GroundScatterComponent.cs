@@ -23,8 +23,6 @@ namespace VoxelTerrain
             public ChunkComponent chunk { get; set; }
         }
 
-        public struct ReadyToSpawn : IComponentData { }
-
         public struct RockGroundScatter : IGroundScatter
         {
             public float scatterDensity { get; set; }

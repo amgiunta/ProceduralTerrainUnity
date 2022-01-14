@@ -7,13 +7,8 @@ using System.Collections.Generic;
 using Unity.Burst;
 using Unity.Jobs;
 using Unity.Mathematics;
-using Unity.Entities;
-using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.Profiling;
-using VoxelTerrain.ECS.Entities;
-using VoxelTerrain.ECS.Systems;
-using VoxelTerrain.ECS.Components;
 
 namespace VoxelTerrain {
     [System.Serializable]
@@ -91,9 +86,6 @@ namespace VoxelTerrain {
 
             private uint queueLimit = 100;
 
-            private World defaultWorld;
-            private EntityManager entityManager;
-
             public PerlinTerrainGenerator(
                 BiomeObject[] biomeObjects,
                 TerrainSettings settings,
@@ -109,9 +101,6 @@ namespace VoxelTerrain {
                 this.chunkWidth = chunkWidth;
                 this.settings = settings;
                 this.queueLimit = queueLimit;
-
-                defaultWorld = World.DefaultGameObjectInjectionWorld;
-                entityManager = defaultWorld.EntityManager;
 
                 runningJobs = new Dictionary<JobHandle, PerlinGeneratorJobV2>();
                 disposedJobs = new List<JobHandle>();

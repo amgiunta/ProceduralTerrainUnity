@@ -13,8 +13,6 @@ namespace VoxelTerrain
                 public Grid grid;
                 public int2 gridPosition;
             }
-
-            public struct ChunkInitialized : IComponentData { }
         }
     }
 }

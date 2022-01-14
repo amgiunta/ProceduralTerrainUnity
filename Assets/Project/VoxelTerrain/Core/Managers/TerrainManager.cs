@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using Unity.Mathematics;
 using VoxelTerrain.Generators;
+using VoxelTerrain.ECS.Components;
 using UnityEngine.Profiling;
 using Unity.Jobs.LowLevel.Unsafe;
 

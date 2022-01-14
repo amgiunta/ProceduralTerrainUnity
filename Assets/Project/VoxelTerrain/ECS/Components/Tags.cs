@@ -1,0 +1,13 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using Unity.Entities;
+
+namespace VoxelTerrain.ECS.Components
+{
+    public struct ChunkInitialized : IComponentData { }
+
+    public struct ReadyToSpawn : IComponentData { }
+
+    public struct FrustumCull : IComponentData { }
+}
