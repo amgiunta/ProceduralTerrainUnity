@@ -1,8 +1,10 @@
+using UnityEngine;
 using System.Linq;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.Rendering;
+using Unity.Rendering.HybridV2;
 using Unity.Jobs;
 using VoxelTerrain.ECS.Components;
 
@@ -23,10 +25,9 @@ namespace VoxelTerrain
                 protected Component groundScatterData;
                 protected Author groundScatterAuthor;
                 protected RenderMesh meshData;
+                protected RenderBounds renderBounds;
 
                 protected Entity prefab;
-
-                protected uint frameScatterLimit;
 
                 protected EntityArchetype NewGroundScatterArchetype()
                 {
@@ -39,7 +40,8 @@ namespace VoxelTerrain
                         typeof(LocalToWorld),
                         typeof(RenderMesh),
                         typeof(RenderBounds),
-                        typeof(ReadyToSpawn)
+                        typeof(ReadyToSpawn),
+                        typeof(FrustumCull)
                     );
                 }
 
@@ -49,8 +51,6 @@ namespace VoxelTerrain
                     endInitializationEntityCommandBufferSystem = World.GetOrCreateSystem<EndInitializationEntityCommandBufferSystem>();
                     defaultWorld = World.DefaultGameObjectInjectionWorld;
                     entityManager = defaultWorld.EntityManager;
-
-                    frameScatterLimit = 10;
 
                     prefab = entityManager.CreateEntity(NewGroundScatterArchetype());
                 }
@@ -64,6 +64,13 @@ namespace VoxelTerrain
                         material = groundScatterAuthor.material,
                         castShadows = UnityEngine.Rendering.ShadowCastingMode.On,
                         receiveShadows = true
+                    };
+                    Unity.Mathematics.AABB aabb = new AABB();
+                    aabb.Center = meshData.mesh.bounds.center;
+                    aabb.Extents = meshData.mesh.bounds.extents;
+                    renderBounds = new RenderBounds
+                    {
+                        Value = aabb
                     };
 
                     entityManager.SetSharedComponentData(prefab, meshData);
@@ -119,6 +126,7 @@ namespace VoxelTerrain
                     EntityArchetype archetype = NewGroundScatterArchetype();
                     RockGroundScatter scatterData = groundScatterData;
                     Entity scatterPrefab = prefab;
+                    RenderBounds thisBounds = renderBounds;
                     ClimateSettings settings = TerrainManager.instance.terrainSettings;
                     int seed = TerrainManager.instance.terrainSettings.seed;
 
@@ -169,6 +177,7 @@ namespace VoxelTerrain
                                 {
                                     Value = scatterData.uniformScale
                                 });
+                                ecb.SetComponent(chunkEntityInQueryIndex, scatterEntity, thisBounds);
                                 ecb.SetComponent(chunkEntityInQueryIndex, scatterEntity, scatterData);
                             }).Schedule(previous);
 

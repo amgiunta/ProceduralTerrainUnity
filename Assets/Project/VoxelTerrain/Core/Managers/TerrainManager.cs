@@ -66,11 +66,8 @@ namespace VoxelTerrain
         // Start is called before the first frame update
         void Start()
         {
-            Debug.Log(groundScatter.Count);
-            Debug.Log(Application.persistentDataPath);
             chunks = new Dictionary<int2, Chunk>();
             chunkObjects = new Dictionary<int2, TerrainChunk>();
-            Debug.Log("Max Jobs: " + JobsUtility.MaxJobThreadCount);
 
             //LoadWorld();
 
