@@ -127,31 +127,22 @@ namespace VoxelTerrain {
                 return false;
             }
 
-            Profiler.BeginSample("Generate Chunk Mesh");
-            Profiler.BeginSample("Initialize Chunk Mesh");
-            Profiler.BeginSample("Sizing");
             // Initializations
             int sizeVector3 = sizeof(float) * 3;
             int sizeVector2 = sizeof(float) * 2;
             int sizeVoxel = (sizeof(int) * 3) + (sizeVector3 * 4);
 
             float voxelWidth = (chunk.grid.voxelSize * (chunk.chunkWidth / chunk.lods[lodIndex].width));
-            Profiler.EndSample();
 
-            Profiler.BeginSample("Counts");
             int vertCount = (chunk.lods[lodIndex].voxels.Length * 12) + (chunk.lods[lodIndex].width * 8);
             int indexCount = (chunk.lods[lodIndex].voxels.Length * 18) + (chunk.lods[lodIndex].width * 12);
-            Profiler.EndSample();
 
-            Profiler.BeginSample("Compute Process Creation");
             if (!computeProcesses.ContainsKey(lodIndex)) {
                 computeProcesses.Add(lodIndex, new ComputeProcess(lodIndex));
             }
 
             ComputeProcess process = computeProcesses[lodIndex];
-            Profiler.EndSample();
 
-            Profiler.BeginSample("Process Buffers");
             // Chunk data buffers
             process.SetBuffer("chunk_voxel_data", ref chunk.lods[lodIndex].voxels, sizeVoxel);
 
@@ -165,7 +156,6 @@ namespace VoxelTerrain {
             process.SetValue("voxel_size", voxelWidth);
             process.SetValue("chunk_width", chunk.lods[lodIndex].width);
 
-            Profiler.BeginSample("Compute Buffers");
             meshGenerator.SetFloat("voxelSize", voxelWidth);
             meshGenerator.SetInt("chunkWidth", chunk.lods[lodIndex].width);
 
@@ -175,14 +165,10 @@ namespace VoxelTerrain {
             meshGenerator.SetBuffer(0, "normals", process.GetBuffer("normals"));
             meshGenerator.SetBuffer(0, "uv0", process.GetBuffer("uv0"));
             meshGenerator.SetBuffer(0, "uv1", process.GetBuffer("uv1"));
-            Profiler.EndSample();
-            Profiler.EndSample();
 
-            Profiler.BeginSample("Generate Mesh");
             // Run computation
             meshGenerator.Dispatch(0, chunk.lods[lodIndex].width / 8, chunk.lods[lodIndex].width / 8, 1);
             process.startTime = Time.realtimeSinceStartup;
-            Profiler.EndSample();
 
             process.Complete += (int lodIndex, ComputeData computeData) =>
             {
@@ -190,7 +176,6 @@ namespace VoxelTerrain {
                     meshes.Add(lodIndex, new Mesh());
                 }
 
-                Profiler.BeginSample("Read Mesh Data");
                 // Use Data
                 //meshes[lodIndex].Clear();
                 meshes[lodIndex].name = $"Chunk {chunk.gridPosition} LOD {lodIndex}";
@@ -200,23 +185,19 @@ namespace VoxelTerrain {
                     if (request.hasError) { Debug.LogError($"Could not get buffer data."); return; }
                     else if (!request.done) { Debug.Log("Not done yet..."); return; }
 
-                    Profiler.BeginSample("Read Mesh Verts");
                     meshes[lodIndex].SetVertices(request.GetData<Vector3>());
                     computeData.DisposeBuffer("verts");
                     computeData.DisposeBuffer("chunk_voxel_data");
-                    Profiler.EndSample();
 
                     AsyncGPUReadback.Request(computeData.GetBuffer("tris"), (AsyncGPUReadbackRequest request) =>
                     {
                         if (request.hasError) { Debug.LogError($"Could not get buffer data."); return; }
                         else if (!request.done) { Debug.Log("Not done yet..."); return; }
 
-                        Profiler.BeginSample("Read Mesh Tris");
                         meshes[lodIndex].SetIndexBufferParams(computeData.GetBuffer("tris").count, IndexFormat.UInt32);
                         meshes[lodIndex].SetIndexBufferData(request.GetData<int>(), 0, 0, computeData.GetBuffer("tris").count);
                         meshes[lodIndex].SetSubMesh(0, new SubMeshDescriptor(0, computeData.GetBuffer("tris").count));
                         computeData.DisposeBuffer("tris");
-                        Profiler.EndSample();
                     });
 
                     AsyncGPUReadback.Request(computeData.GetBuffer("normals"), (AsyncGPUReadbackRequest request) =>
@@ -224,10 +205,8 @@ namespace VoxelTerrain {
                         if (request.hasError) { Debug.LogError($"Could not get buffer data."); return; }
                         else if (!request.done) { Debug.Log("Not done yet..."); return; }
 
-                        Profiler.BeginSample("Read Mesh Normals");
                         meshes[lodIndex].SetNormals(request.GetData<Vector3>());
                         computeData.DisposeBuffer("normals");
-                        Profiler.EndSample();
                     });
 
                     AsyncGPUReadback.Request(computeData.GetBuffer("uv0"), (AsyncGPUReadbackRequest request) =>
@@ -235,10 +214,8 @@ namespace VoxelTerrain {
                         if (request.hasError) { Debug.LogError($"Could not get buffer data."); return; }
                         else if (!request.done) { Debug.Log("Not done yet..."); return; }
 
-                        Profiler.BeginSample("Read Mesh UV0s");
                         meshes[lodIndex].SetUVs(0, request.GetData<Vector2>());
                         computeData.DisposeBuffer("uv0");
-                        Profiler.EndSample();
                     });
 
                     AsyncGPUReadback.Request(computeData.GetBuffer("uv1"), (AsyncGPUReadbackRequest request) =>
@@ -246,19 +223,15 @@ namespace VoxelTerrain {
                         if (request.hasError) { Debug.LogError($"Could not get buffer data."); return; }
                         else if (!request.done) { Debug.Log("Not done yet..."); return; }
 
-                        Profiler.BeginSample("Read Mesh UV1s");
                         meshes[lodIndex].SetUVs(1, request.GetData<Vector2>());
                         computeData.DisposeBuffer("uv1");
-                        Profiler.EndSample();
                     });
 
                     bounds = new Bounds(transform.position + (meshes[lodIndex].bounds.max / 2), (meshes[lodIndex].bounds.max - meshes[lodIndex].bounds.min));
                 });
                 
-                Profiler.EndSample();
             };            
 
-            Profiler.EndSample();
             return true;
         }
 

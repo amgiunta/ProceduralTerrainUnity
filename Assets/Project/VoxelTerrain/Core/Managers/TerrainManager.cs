@@ -111,7 +111,7 @@ namespace VoxelTerrain
             //generator?.ResolveClosestJob(gridPosition, UpdateChunkObject, this);
             //generator?.ResolveAllCompleteJobs(UpdateChunkObject, this);
             //Debug.Log($"current: {loadingFromChunk}");
-            generator?.ResolveAllCloseJobs(loadingFromChunk, renderDistance, UpdateChunkObject);
+            generator?.ResolveAllCloseJobs(loadingFromChunk, renderDistance, UpdateChunkObject, chunkQueueLimit);
         }
 
         public void StartGenerator() {
