@@ -16,6 +16,7 @@ namespace VoxelTerrain
         public new RockGroundScatter GetComponentData()
         {
             RockGroundScatter scatter = new RockGroundScatter();
+            scatter.maxRenderDistance = this.maxRenderDistance;
             scatter.scatterDensity = this.scatterDensity;
             scatter.minTemperature = this.minTemperature;
             scatter.maxTemperature = this.maxTemperature;

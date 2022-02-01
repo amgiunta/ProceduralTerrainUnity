@@ -6,7 +6,8 @@ using Unity.Mathematics;
 
 namespace VoxelTerrain.ECS.Components
 {
-    public interface IGroundScatter : IComponentData {
+    public struct TreeGroundScatter : IGroundScatter
+    {
         public float maxRenderDistance { get; set; }
         public float scatterDensity { get; set; }
         public float minTemperature { get; set; }
@@ -20,23 +21,5 @@ namespace VoxelTerrain.ECS.Components
         public float jitterFactor { get; set; }
         public float3 localPosition { get; set; }
         public ChunkComponent chunk { get; set; }
-    }
-
-    [GenerateAuthoringComponent]
-    public struct GroundScatter: IComponentData {
-        public float maxRenderDistance;
-        public float scatterDensity;
-        public float heartiness;
-        public float minTemperature;
-        public float maxTemperature;
-        public float minMoisture;
-        public float maxMoisture;
-        public float maxHeight;
-        public float minHeight;
-        public float3 offset;
-        public float uniformScale;
-        public float jitterFactor;
-        public float3 localPosition;
-        public ChunkComponent chunk;
     }
 }

@@ -231,8 +231,11 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1006859216065447710}
-  - component: {fileID: 4359754679398412699}
-  - component: {fileID: 7563523745532965618}
+  - component: {fileID: 7669629092174547096}
+  - component: {fileID: -7619250520042924942}
+  - component: {fileID: 726707504803560168}
+  - component: {fileID: -4437506379057618538}
+  - component: {fileID: 2389490699981333703}
   m_Layer: 0
   m_Name: Tree
   m_TagString: Untagged
@@ -255,7 +258,7 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &4359754679398412699
+--- !u!114 &7669629092174547096
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -264,22 +267,24 @@ MonoBehaviour:
   m_GameObject: {fileID: 6532406864401473906}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6ddbf9175942e344683f443d7ef37e2f, type: 3}
+  m_Script: {fileID: 11500000, guid: 4039a13ad939bfa4c97a75d67829136e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  scatterDensity: 20
-  minTemperature: 0.26
+  maxRenderDistance: 25
+  scatterDensity: 500
+  heartiness: 0.68
+  minTemperature: 0
   maxTemperature: 1
   minMoisture: 0
   maxMoisture: 1
   minHeight: 1
-  maxHeight: 1000
+  maxHeight: 100
   offset: {x: 0, y: 0, z: 0}
   jitterFactor: 1
   uniformScale: 1
-  mesh: {fileID: -2432090755550338912, guid: 3a000f390b11b0a46933986e90e30912, type: 3}
+  mesh: {fileID: 2534964839176971238, guid: cfe1e58c82954e44491545580b7a3438, type: 3}
   material: {fileID: 2100000, guid: e142d8b1c1897ad4788e90d4e6eb64a4, type: 2}
---- !u!114 &7563523745532965618
+--- !u!114 &-7619250520042924942
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -288,10 +293,61 @@ MonoBehaviour:
   m_GameObject: {fileID: 6532406864401473906}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3ed0098fd3ac3154c9426f3fe7e9f929, type: 3}
+  m_Script: {fileID: 11500000, guid: c0a7d5938d164ac4d88f5ef44d34cae5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  mesh: {fileID: -2432090755550338912, guid: 3a000f390b11b0a46933986e90e30912, type: 3}
+  material: {fileID: 2100000, guid: e142d8b1c1897ad4788e90d4e6eb64a4, type: 2}
+  distance: 100
+  renderOrder: 0
+--- !u!114 &726707504803560168
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6532406864401473906}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0a7d5938d164ac4d88f5ef44d34cae5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
+  material: {fileID: 2100000, guid: e142d8b1c1897ad4788e90d4e6eb64a4, type: 2}
   distance: 200
+  renderOrder: 1
+--- !u!114 &-4437506379057618538
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6532406864401473906}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0a7d5938d164ac4d88f5ef44d34cae5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mesh: {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
+  material: {fileID: 2100000, guid: e142d8b1c1897ad4788e90d4e6eb64a4, type: 2}
+  distance: 300
+  renderOrder: 2
+--- !u!114 &2389490699981333703
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6532406864401473906}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0a7d5938d164ac4d88f5ef44d34cae5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mesh: {fileID: -462981019419857548, guid: 8b3dc3f2f98ba7c4d8d387e85b82c2dd, type: 3}
+  material: {fileID: 2100000, guid: e142d8b1c1897ad4788e90d4e6eb64a4, type: 2}
+  distance: 400
+  renderOrder: 3
 --- !u!1 &7383217604414576708
 GameObject:
   m_ObjectHideFlags: 0

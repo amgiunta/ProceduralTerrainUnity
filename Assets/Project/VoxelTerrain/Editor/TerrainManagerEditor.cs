@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEditor;
+using Unity.Entities;
 
 namespace VoxelTerrain
 {

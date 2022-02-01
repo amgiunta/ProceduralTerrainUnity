@@ -16,6 +16,7 @@ namespace VoxelTerrain
         public new TreeGroundScatter GetComponentData()
         {
             TreeGroundScatter scatter = new TreeGroundScatter();
+            scatter.maxRenderDistance = this.maxRenderDistance;
             scatter.scatterDensity = this.scatterDensity;
             scatter.minTemperature = this.minTemperature;
             scatter.maxTemperature = this.maxTemperature;

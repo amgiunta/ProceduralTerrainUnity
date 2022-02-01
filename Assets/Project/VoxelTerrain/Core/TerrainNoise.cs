@@ -455,8 +455,11 @@ namespace VoxelTerrain
         {
             float totalHeight = 0;
             float totalWeight = 0;
-            foreach (Biome biome in biomes)
+
+            for (int i = 0; i < biomes.Length; i++)
             {
+                Biome biome = biomes[i];
+
                 float noise = biome.GetNoiseAtPoint(x, y, stride, chunkPosition * chunkWidth, seed);
                 float height = math.remap(0, 1, biome.minTerrainHeight, biome.maxTerrainHeight, noise);
                 float weight = biome.Idealness(climate.x, climate.y);
@@ -564,25 +567,57 @@ namespace VoxelTerrain
 
         public static float2 Climate(float x, float y, ClimateSettings climateSettings, float2 gridPosition, int chunkWidth, int seed) {
             float temperature = Noise(x, y, climateSettings.temperaturePersistance, climateSettings.temperatureLancunarity, 1, (climateSettings.temperatureOffset + gridPosition) * chunkWidth, climateSettings.temperatureScale, climateSettings.temperatureOctaves, seed);
-            temperature = math.remap(0, 1, climateSettings.minTemperature, climateSettings.maxTemperature, temperature);
+            temperature = math.clamp(math.remap(0, 1, climateSettings.minTemperature, climateSettings.maxTemperature, temperature), 0, 1);
 
             float moisture = Noise(x, y, climateSettings.moisturePersistance, climateSettings.moistureLancunarity, 1, (climateSettings.moistureOffset + gridPosition) * chunkWidth, climateSettings.moistureScale, climateSettings.moistureOctaves, seed);
-            moisture = math.remap(0, 1, climateSettings.minMoisture, climateSettings.maxMoisture, moisture);
+            moisture = math.clamp(math.remap(0, 1, climateSettings.minMoisture, climateSettings.maxMoisture, moisture), 0, 1);
 
             return new float2(temperature, moisture);
         }
 
-        public static float ClimateIdealness(float2 minClimate, float2 maxClimate, float2 climate) {
-            if (minClimate.Equals(float2.zero) && maxClimate.Equals(float2.zero)) { return 0; }
+        public static float ClimateIdealness(float2 minClimate, float2 maxClimate, float2 climate, float heartiness = 0) {
+            if (minClimate.Equals(maxClimate)) { return 0; }
+            else if (climate.x > maxClimate.x || climate.y > maxClimate.y || climate.x < minClimate.x || climate.y < minClimate.y) { return 0; }
 
-            float idealTemperature = minClimate.x + ((maxClimate.x - minClimate.x) / 2);
-            float idealMoisture = minClimate.y + ((maxClimate.y - minClimate.y) / 2);
+            float tempRange = maxClimate.x - minClimate.x;
+            float moisRange = maxClimate.y - minClimate.y;
 
-            float tempDistance = math.abs(climate.x - idealTemperature);
-            float moisDistance = math.abs(climate.y - idealMoisture);
+            float idealTempRange = tempRange * heartiness;
+            float idealMoisRange = moisRange * heartiness;
 
-            float tempIdealness = math.clamp(math.remap(maxClimate.x - minClimate.x, 0f, 0f, 1f, tempDistance), 0, 1);
-            float moisIdealness = math.clamp(math.remap(maxClimate.y - minClimate.y, 0f, 0f, 1f, moisDistance), 0, 1);
+            float idealTemperature = minClimate.x + (tempRange / 2);
+            float idealMoisture = minClimate.y + (moisRange / 2);
+
+            float idealTempStart = idealTemperature - (idealTempRange / 2);
+            float idealTempEnd = idealTemperature + (idealTempRange / 2);
+            float idealMoisStart = idealMoisture - (idealMoisRange / 2);
+            float idealMoisEnd = idealMoisture + (idealMoisRange / 2);
+
+
+            if (climate.x < idealTempEnd && climate.x > idealMoisStart && climate.y < idealMoisEnd && climate.y > idealMoisStart) { return 1; }
+
+            float tempIdealness;
+            float moisIdealness;
+
+            if (climate.x < idealTempStart)
+            {
+                tempIdealness = math.unlerp(minClimate.x, idealTempStart, climate.x);
+            }
+            else if (climate.x > idealTempEnd)
+            {
+                tempIdealness = math.unlerp(maxClimate.x, idealTempEnd, climate.x);
+            }
+            else { tempIdealness = 1; }
+
+            if (climate.y < idealMoisStart)
+            {
+                moisIdealness = math.unlerp(minClimate.y, idealMoisStart, climate.y);
+            }
+            else if (climate.y > idealMoisEnd)
+            {
+                moisIdealness = math.unlerp(maxClimate.y, idealMoisEnd, climate.y);
+            }
+            else { moisIdealness = 1; }
 
             return tempIdealness * moisIdealness;
         }

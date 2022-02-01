@@ -120,19 +120,19 @@ namespace VoxelTerrain {
 
                     Profiler.BeginSample("Arrays");
                     Profiler.BeginSample("biomes");
-                    job.biomes = new NativeArray<Biome>(biomes, Allocator.Persistent);
+                    job.biomes = new NativeArray<Biome>(biomes, Allocator.TempJob);
                     Profiler.EndSample();
 
                     Profiler.BeginSample("voxels");
-                    job.voxels = new NativeArray<Voxel>(lodWidth * lodWidth, Allocator.Persistent);
+                    job.voxels = new NativeArray<Voxel>(lodWidth * lodWidth, Allocator.TempJob);
                     Profiler.EndSample();
 
                     Profiler.BeginSample("climateMap");
-                    job.climateMap = new NativeArray<Color>(lodWidth * lodWidth, Allocator.Persistent);
+                    job.climateMap = new NativeArray<Color>(lodWidth * lodWidth, Allocator.TempJob);
                     Profiler.EndSample();
 
                     Profiler.BeginSample("colorMap");
-                    job.colorMap = new NativeArray<Color>(lodWidth * lodWidth, Allocator.Persistent);
+                    job.colorMap = new NativeArray<Color>(lodWidth * lodWidth, Allocator.TempJob);
                     Profiler.EndSample();
                     Profiler.EndSample();
 
@@ -238,7 +238,7 @@ namespace VoxelTerrain {
 
                         Profiler.BeginSample("Dispose Native Arrays");
                         process.Value.voxels.Dispose();
-                        process.Value.biomes.Dispose();
+                        //process.Value.biomes.Dispose();
                         process.Value.climateMap.Dispose();
                         process.Value.colorMap.Dispose();
                         Profiler.EndSample();
@@ -382,10 +382,10 @@ namespace VoxelTerrain {
         
         [BurstCompile(Debug = true)]
         public struct PerlinGeneratorJobV2 : IJobParallelFor {
-            [ReadOnly] public NativeArray<Biome> biomes;
+            [DeallocateOnJobCompletion] [ReadOnly] public NativeArray<Biome> biomes;
             public NativeArray<Voxel> voxels;
-            public NativeArray<Color> climateMap;
-            public NativeArray<Color> colorMap;
+            [WriteOnly] public NativeArray<Color> climateMap;
+            [WriteOnly] public NativeArray<Color> colorMap;
             public ClimateSettings climateSettings;
             public int seed;
             public int chunkWidth;

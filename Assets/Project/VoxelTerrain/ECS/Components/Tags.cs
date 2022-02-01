@@ -6,6 +6,7 @@ using Unity.Entities;
 namespace VoxelTerrain.ECS.Components
 {
     public struct ChunkInitialized : IComponentData { }
+    public struct ScatterApplied : IComponentData { }
 
     public struct ReadyToSpawn : IComponentData { }
 

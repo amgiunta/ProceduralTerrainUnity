@@ -8,7 +8,9 @@ namespace VoxelTerrain
 {
     public class GroundScatterAuthor : MonoBehaviour
     {
-        [Range(0.001f, 100)] public float scatterDensity;
+        public float maxRenderDistance;
+        [Range(0.001f, 5000)] public float scatterDensity;
+        [Range(0, 1)] public float heartiness;
         [Range(0, 1)] public float minTemperature;
         [Range(0, 1)] public float maxTemperature;
         [Range(0, 1)] public float minMoisture;
@@ -27,8 +29,23 @@ namespace VoxelTerrain
             return typeof(IGroundScatter);
         }
 
-        public IGroundScatter GetComponentData() {
-            return default(IGroundScatter);
+        public GroundScatter GetComponentData() {
+            GroundScatter groundScatter = new GroundScatter
+            {
+                maxRenderDistance = maxRenderDistance,
+                scatterDensity = scatterDensity,
+                heartiness = heartiness,
+                minTemperature = minTemperature,
+                maxTemperature = maxTemperature,
+                minMoisture = minMoisture,
+                maxMoisture = maxMoisture,
+                minHeight = minHeight,
+                maxHeight = maxHeight,
+                offset = offset,
+                jitterFactor = jitterFactor,
+                uniformScale = uniformScale
+            };
+            return groundScatter;
         }
     }
 

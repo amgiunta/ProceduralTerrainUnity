@@ -38,8 +38,6 @@ namespace VoxelTerrain.ECS.Systems
             EntityArchetype entityArchetype = entityManager.CreateArchetype(
                 typeof(Translation),
                 typeof(Rotation),
-                typeof(RenderMesh),
-                typeof(RenderBounds),
                 typeof(LocalToWorld),
                 typeof(ChunkComponent),
                 typeof(ChunkInitialized)

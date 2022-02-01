@@ -10,6 +10,7 @@ using VoxelTerrain.Generators;
 using VoxelTerrain.ECS.Components;
 using UnityEngine.Profiling;
 using Unity.Jobs.LowLevel.Unsafe;
+using Unity.Entities;
 
 namespace VoxelTerrain
 {
