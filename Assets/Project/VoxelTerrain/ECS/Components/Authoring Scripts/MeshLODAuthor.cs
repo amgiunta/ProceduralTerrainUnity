@@ -9,6 +9,6 @@ namespace VoxelTerrain
         public Mesh mesh;
         public Material material;
         public float distance;
-        public int renderOrder;
+        public bool faceCamera = false;
     }
 }

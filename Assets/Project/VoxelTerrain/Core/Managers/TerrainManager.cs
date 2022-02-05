@@ -24,7 +24,6 @@ namespace VoxelTerrain
 
         public float generatorFrequency = 0.02f;
 
-        public List<GroundScatterAuthor> groundScatter;
         public List<BiomeObject> biomes;
         public TerrainSettings terrainSettings;
 

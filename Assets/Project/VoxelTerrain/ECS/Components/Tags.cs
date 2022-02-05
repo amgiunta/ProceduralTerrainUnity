@@ -7,6 +7,7 @@ namespace VoxelTerrain.ECS.Components
 {
     public struct ChunkInitialized : IComponentData { }
     public struct ScatterApplied : IComponentData { }
+    public struct FaceCamera : IComponentData { }
 
     public struct ReadyToSpawn : IComponentData { }
 
