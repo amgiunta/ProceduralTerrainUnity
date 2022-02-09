@@ -71,7 +71,7 @@ public class PlayerController : MonoBehaviour
 
     private void LateUpdate()
     {
-        TerrainControlSystem.instance.CreateChunks(TerrainManager.instance.renderDistance, gridPosition, TerrainManager.instance.grid);
+        //TerrainControlSystem.instance.CreateChunks(TerrainManager.instance.renderDistance, gridPosition, TerrainManager.instance.grid);
     }
 
     private void FixedUpdate()

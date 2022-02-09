@@ -100,6 +100,8 @@ namespace VoxelTerrain.ECS.Systems {
                 Entity prefab = scatterPrefab.Value;
                 GroundScatter groundScatter = scatterPrefab.Key;
                 ClimateSettings localClimateSettings = climateSettings;
+                Scale prefabScale = entityManager.GetComponentData<Scale>(scatterPrefab.Value);
+                RotationConstraints rotationConstraints = entityManager.GetComponentData<RotationConstraints>(scatterPrefab.Value);
                 int localTerrainSeed = terrainSeed;
                 NativeArray<Biome> nativeBiomes = new NativeArray<Biome>(biomes, Allocator.TempJob);
 
@@ -121,16 +123,40 @@ namespace VoxelTerrain.ECS.Systems {
                         float2 climate = TerrainNoise.Climate(x, z, localClimateSettings, closestChunk.gridPosition, closestChunk.grid.chunkSize, localTerrainSeed);
                         
                         float climateIdealness = TerrainNoise.ClimateIdealness(new float2(groundScatter.minTemperature, groundScatter.minMoisture), new float2(groundScatter.maxTemperature, groundScatter.maxMoisture), climate, groundScatter.heartiness);
-                        if (rng.NextFloat(0, 1) > climateIdealness) { return; }
+                        float random = rng.NextFloat(0, 1);
+
+                        if (random > climateIdealness) {
+                            continue;
+                        }
 
                         float height = TerrainNoise.GetHeightAtPoint(x, z, climate, nativeBiomes, 1, closestChunk.gridPosition, closestChunk.grid.chunkSize, localTerrainSeed);
-                        if (height > groundScatter.maxHeight || height < groundScatter.minHeight) { return; }
+                        if (height > groundScatter.maxHeight || height < groundScatter.minHeight) {
+                            continue;
+                        }
+
+                        var scale = prefabScale.Value + prefabScale.Value * (rng.NextFloat(-0.3f, 0.3f));
+
+                        quaternion rot = quaternion.identity;
+
+                        if (!rotationConstraints.x)
+                        {
+                            rot = math.mul(rot, quaternion.AxisAngle(new float3(1, 0, 0), rng.NextFloat(0, 360)));
+                        }
+                        else if (!rotationConstraints.y)
+                        {
+                            rot = math.mul(rot, quaternion.AxisAngle(new float3(0, 1, 0), rng.NextFloat(0, 360)));
+                        }
+                        else if (!rotationConstraints.z) {
+                            rot = math.mul(rot, quaternion.AxisAngle(new float3(0, 0, 1), rng.NextFloat(0, 360)));
+                        }
 
                         float3 position = new float3(x, height, z);
                         float3 worldPosition = new float3(closestChunkTranslation.Value.x + (position.x * closestChunk.grid.voxelSize), height, closestChunkTranslation.Value.z + (position.z * closestChunk.grid.voxelSize));
 
                         Entity scatterEntity = ecb.Instantiate(i, prefab);
                         ecb.SetComponent(i, scatterEntity, new Translation { Value = worldPosition});
+                        ecb.SetComponent(i, scatterEntity, new Scale { Value = scale });
+                        ecb.SetComponent(i, scatterEntity, new Rotation { Value = rot });
                     }
                 }).Schedule(Dependency);
 

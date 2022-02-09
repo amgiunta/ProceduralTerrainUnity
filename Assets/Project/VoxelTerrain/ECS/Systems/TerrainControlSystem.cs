@@ -6,6 +6,8 @@ using Unity.Transforms;
 using Unity.Rendering;
 using VoxelTerrain.ECS.Components;
 
+using UnityEngine;
+
 namespace VoxelTerrain.ECS.Systems
 {
     [UpdateInGroup(typeof(InitializationSystemGroup))]
@@ -18,6 +20,8 @@ namespace VoxelTerrain.ECS.Systems
         private EndInitializationEntityCommandBufferSystem endInitializationEntityCommandBufferSystem;
         private World defaultWorld;
         private EntityManager entityManager;
+
+        private Camera cam;
                 
 
         protected override void OnCreate()
@@ -30,8 +34,23 @@ namespace VoxelTerrain.ECS.Systems
             endInitializationEntityCommandBufferSystem = World.GetOrCreateSystem<EndInitializationEntityCommandBufferSystem>();
         }
 
+        protected override void OnStartRunning()
+        {
+            cam = Camera.main;
+        }
+
         protected override void OnUpdate()
         {
+            CreateChunks(TerrainManager.instance.renderDistance, WorldToGridSpace(cam.transform.position), TerrainManager.instance.grid);
+        }
+
+        private int2 WorldToGridSpace(Vector3 position) {
+            int vx = Mathf.FloorToInt(position.x * TerrainManager.instance.grid.voxelSize);
+            int vy = Mathf.FloorToInt(position.z * TerrainManager.instance.grid.voxelSize);
+            return new int2(
+                vx / TerrainManager.instance.grid.chunkSize,
+                vy / TerrainManager.instance.grid.chunkSize
+            );
         }
 
         public virtual void CreateChunks(float radius, int2 center, Grid grid) {

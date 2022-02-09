@@ -575,51 +575,27 @@ namespace VoxelTerrain
             return new float2(temperature, moisture);
         }
 
+        public static float Idealness(float min, float max, float value, float heartiness) {
+            float fullRange = max - min;
+            float maxDistance = fullRange / 2;
+            float ideal = max - maxDistance;
+
+            float heartyRange = fullRange * heartiness;
+            float heartyDistance = heartyRange / 2;
+
+            float distance = math.abs(value - ideal);
+
+            if (distance < heartyDistance) { return 1; }
+
+            float idealness = math.clamp(math.unlerp(maxDistance, heartyDistance, distance), 0, 1);
+
+            return idealness;
+        }
+
         public static float ClimateIdealness(float2 minClimate, float2 maxClimate, float2 climate, float heartiness = 0) {
             if (minClimate.Equals(maxClimate)) { return 0; }
-            else if (climate.x > maxClimate.x || climate.y > maxClimate.y || climate.x < minClimate.x || climate.y < minClimate.y) { return 0; }
 
-            float tempRange = maxClimate.x - minClimate.x;
-            float moisRange = maxClimate.y - minClimate.y;
-
-            float idealTempRange = tempRange * heartiness;
-            float idealMoisRange = moisRange * heartiness;
-
-            float idealTemperature = minClimate.x + (tempRange / 2);
-            float idealMoisture = minClimate.y + (moisRange / 2);
-
-            float idealTempStart = idealTemperature - (idealTempRange / 2);
-            float idealTempEnd = idealTemperature + (idealTempRange / 2);
-            float idealMoisStart = idealMoisture - (idealMoisRange / 2);
-            float idealMoisEnd = idealMoisture + (idealMoisRange / 2);
-
-
-            if (climate.x < idealTempEnd && climate.x > idealMoisStart && climate.y < idealMoisEnd && climate.y > idealMoisStart) { return 1; }
-
-            float tempIdealness;
-            float moisIdealness;
-
-            if (climate.x < idealTempStart)
-            {
-                tempIdealness = math.unlerp(minClimate.x, idealTempStart, climate.x);
-            }
-            else if (climate.x > idealTempEnd)
-            {
-                tempIdealness = math.unlerp(maxClimate.x, idealTempEnd, climate.x);
-            }
-            else { tempIdealness = 1; }
-
-            if (climate.y < idealMoisStart)
-            {
-                moisIdealness = math.unlerp(minClimate.y, idealMoisStart, climate.y);
-            }
-            else if (climate.y > idealMoisEnd)
-            {
-                moisIdealness = math.unlerp(maxClimate.y, idealMoisEnd, climate.y);
-            }
-            else { moisIdealness = 1; }
-
-            return tempIdealness * moisIdealness;
+            return Idealness(minClimate.x, maxClimate.x, climate.x, heartiness) * Idealness(minClimate.y, maxClimate.y, climate.y, heartiness);
         }
 
         public static void CreateClimateMap(int chunkWidth, ref float2[] climateMap, int startIndex, TerrainSettings settings, float2 gridPosition = default)
