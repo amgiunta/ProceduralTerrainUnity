@@ -24,7 +24,7 @@ namespace VoxelTerrain.ECS.Systems {
         protected ClimateSettings climateSettings;
         protected int terrainSeed;
 
-        protected int framesToExecution = 5;
+        protected int framesToExecution = 10;
         private int frame;
         private int lastExecution;
 
@@ -39,6 +39,7 @@ namespace VoxelTerrain.ECS.Systems {
             climateSettings = TerrainManager.instance.terrainSettings;
             terrainSeed = TerrainManager.instance.terrainSettings.seed;
             biomes = new Biome[TerrainManager.instance.biomes.Count];
+            framesToExecution = 5 * GroundScatterEntityManager.convertedPrefabs.Count;
             int count = 0;
             foreach (Biome biome in TerrainManager.instance.biomes) {
                 biomes[count] = biome;
