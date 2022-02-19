@@ -71,7 +71,7 @@ namespace VoxelTerrain
 
             //LoadWorld();
 
-            StartGenerator();
+            //StartGenerator();
         }
 
         private void OnDisable()
@@ -90,7 +90,7 @@ namespace VoxelTerrain
 
         private void LateUpdate()
         {
-            ResolveChunks();
+            //ResolveChunks();
             //generator.DisposeJobs();
         }
 

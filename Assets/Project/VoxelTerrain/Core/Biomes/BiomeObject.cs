@@ -18,6 +18,7 @@ namespace VoxelTerrain
         [Range(-512, 512)] public int maxTerrainHeight = 64;
         public Vector2 generatorNoiseScale;
         public Vector2 heightNormalNoiseScale;
+        [Range(0, 1)]public float noiseRotation;
         public float persistance;
         public float lancunarity;
         [Range(1, 20)] public int octaves = 1;
@@ -63,6 +64,7 @@ namespace VoxelTerrain
         public int maxTerrainHeight;
         public float2 generatorNoiseScale;
         public float2 heightNormalNoiseScale;
+        public float noiseRotation;
         public float persistance;
         public float lancunarity;
         [Range(1, 20)] public int octaves;
@@ -86,7 +88,8 @@ namespace VoxelTerrain
                 heightNormalNoiseScale = new float2(other.heightNormalNoiseScale.x, other.heightNormalNoiseScale.y),
                 persistance = other.persistance,
                 lancunarity = other.lancunarity,
-                octaves = other.octaves
+                octaves = other.octaves,
+                noiseRotation = other.noiseRotation
             };
         }
 
@@ -128,6 +131,27 @@ namespace VoxelTerrain
                 octaves,
                 seed
             );
+        }
+
+        public float3 GetNoiseAndDerivativeAtPoint(float x, float y, int stride, float2 offset, int seed)
+        {
+            float dx;
+            float dy;
+
+            float noise = TerrainNoise.Noise(
+                x, y,
+                persistance,
+                lancunarity,
+                out dx, out dy,
+                stride,
+                offset,
+                generatorNoiseScale,
+                octaves,
+                seed,
+                noiseRotation
+            );
+
+            return new float3(noise, dx, dy);
         }
     }
 }

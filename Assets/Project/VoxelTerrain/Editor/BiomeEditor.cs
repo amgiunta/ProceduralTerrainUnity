@@ -20,6 +20,7 @@ namespace VoxelTerrain
         SerializedProperty propMaxTerrainHeight;
         SerializedProperty propGeneratorNoiseScale;
         SerializedProperty propHeightNormalNoiseScale;
+        SerializedProperty propNoiseRotation;
         SerializedProperty propPersistance;
         SerializedProperty propLancunarity;
         SerializedProperty propOctaves;
@@ -43,6 +44,7 @@ namespace VoxelTerrain
             propMaxTerrainHeight = so.FindProperty("maxTerrainHeight");
             propGeneratorNoiseScale = so.FindProperty("generatorNoiseScale");
             propHeightNormalNoiseScale = so.FindProperty("heightNormalNoiseScale");
+            propNoiseRotation = so.FindProperty("noiseRotation");
             propPersistance = so.FindProperty("persistance");
             propLancunarity = so.FindProperty("lancunarity");
             propOctaves = so.FindProperty("octaves");
@@ -66,6 +68,7 @@ namespace VoxelTerrain
             EditorGUILayout.PropertyField(propMaxTerrainHeight);
             EditorGUILayout.PropertyField(propGeneratorNoiseScale);
             EditorGUILayout.PropertyField(propHeightNormalNoiseScale);
+            EditorGUILayout.PropertyField(propNoiseRotation);
             EditorGUILayout.PropertyField(propPersistance);
             EditorGUILayout.PropertyField(propLancunarity);
             EditorGUILayout.PropertyField(propOctaves);

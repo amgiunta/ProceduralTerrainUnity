@@ -5,10 +5,7 @@ struct Voxel {
 	int x;
 	int y;
 	int height;
-    float3 normalNorth;
-    float3 normalSouth;
-    float3 normalEast;
-    float3 normalWest;
+    float3 normal;
 };
 
 // Chunk data
@@ -70,22 +67,22 @@ void SetVoxelVerts(uint3 id, uint vertStart) {
 	
     // Top
 	verts[vertStart] = v0;
-    normals[vertStart] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));
+    normals[vertStart] = voxels[vid].normal;
     uv0[vertStart] = float2(0, 0);
     uv1[vertStart] = float2(float(id.x) / chunkWidth, float(id.y) / chunkWidth);
 	
 	verts[vertStart + 1] = v1;
-    normals[vertStart + 1] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));
+    normals[vertStart + 1] = voxels[vid].normal;
     uv0[vertStart + 1] = float2(0, 1);
     uv1[vertStart + 1] = float2(float(id.x) / chunkWidth, float(id.y + 1) / chunkWidth);
 	
 	verts[vertStart + 2] = v2;
-    normals[vertStart + 2] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));
+    normals[vertStart + 2] = voxels[vid].normal;
     uv0[vertStart + 2] = float2(1, 1);
     uv1[vertStart + 2] = float2(float(id.x + 1) / chunkWidth, float(id.y + 1) / chunkWidth);
 	
 	verts[vertStart + 3] = v3;
-    normals[vertStart + 3] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));
+    normals[vertStart + 3] = voxels[vid].normal;
     uv0[vertStart + 3] = float2(1, 0);
     uv1[vertStart + 3] = float2(float(id.x + 1) / chunkWidth, float(id.y) / chunkWidth);
 	
@@ -106,18 +103,18 @@ void SetVoxelVerts(uint3 id, uint vertStart) {
     
     if (id.y == 0)
     {
-        normals[vertStart + 4] = voxels[vid].normalSouth;
-        normals[vertStart + 5] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));
-        normals[vertStart + 6] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));
-        normals[vertStart + 7] = voxels[vid].normalSouth;
+        normals[vertStart + 4] = voxels[vid].normal;
+        normals[vertStart + 5] = voxels[vid].normal;
+        normals[vertStart + 6] = voxels[vid].normal;
+        normals[vertStart + 7] = voxels[vid].normal;
 
     }
     else
     {
-        normals[vertStart + 4] = normalize(lerp(voxels[vid-chunkWidth].normalWest, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));	
-        normals[vertStart + 5] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));	
-        normals[vertStart + 6] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));	
-        normals[vertStart + 7] = normalize(lerp(voxels[vid-chunkWidth].normalEast, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));        
+        normals[vertStart + 4] = voxels[vid].normal;
+        normals[vertStart + 5] = voxels[vid].normal;
+        normals[vertStart + 6] = voxels[vid].normal;
+        normals[vertStart + 7] = voxels[vid].normal;
     }
     
 	
@@ -139,17 +136,17 @@ void SetVoxelVerts(uint3 id, uint vertStart) {
     
     if (id.x == 0)
     {
-        normals[vertStart + 8] = voxels[vid].normalWest;	
-        normals[vertStart + 9] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));	
-        normals[vertStart + 10] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));	
-        normals[vertStart + 11] = voxels[vid].normalWest;
+        normals[vertStart + 8] = voxels[vid].normal;
+        normals[vertStart + 9] = voxels[vid].normal;
+        normals[vertStart + 10] = voxels[vid].normal;
+        normals[vertStart + 11] = voxels[vid].normal;
     }
     else
     {
-        normals[vertStart + 8] = normalize(lerp(voxels[vid].normalWest, voxels[vid-1].normalNorth, float3(0.5, 0.5, 0.5)));
-        normals[vertStart + 9] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));
-        normals[vertStart + 10] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));	
-        normals[vertStart + 11] = normalize(lerp(voxels[vid].normalWest, voxels[vid-1].normalSouth, float3(0.5, 0.5, 0.5)));
+        normals[vertStart + 8] = voxels[vid].normal;
+        normals[vertStart + 9] = voxels[vid].normal;
+        normals[vertStart + 10] = voxels[vid].normal;
+        normals[vertStart + 11] = voxels[vid].normal;
     }
 	
     uint vertEnd = vertStart + 11;
@@ -159,25 +156,25 @@ void SetVoxelVerts(uint3 id, uint vertStart) {
     {
 		//v12
         verts[vertEnd + 1] = float3(float(voxels[vid].x + 1) * voxelSize, -10, voxels[vid].y * voxelSize);
-        normals[vertEnd + 1] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));
+        normals[vertEnd + 1] = voxels[vid].normal;
         uv0[vertEnd + 1] = float2(0, 0);
         uv1[vertEnd + 1] = float2(float(id.x) / chunkWidth, float(id.y) / chunkWidth);
 		
 		//v13
         verts[vertEnd + 2] = v3;
-        normals[vertEnd + 2] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalSouth, float3(0.5, 0.5, 0.5)));
+        normals[vertEnd + 2] = voxels[vid].normal;
         uv0[vertEnd + 2] = float2(0, abs(verts[vertEnd + 2].y - verts[vertEnd + 1].y) / voxelSize);
         uv1[vertEnd + 2] = float2(float(id.x) / chunkWidth, float(id.y) / chunkWidth);
 		
 		//v14
         verts[vertEnd + 3] = v2;
-        normals[vertEnd + 3] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));
+        normals[vertEnd + 3] = voxels[vid].normal;
         uv0[vertEnd + 3] = float2(1, abs(verts[vertEnd + 2].y - verts[vertEnd + 1].y) / voxelSize);
         uv1[vertEnd + 3] = float2(float(id.x) / chunkWidth, float(id.y + 1) / chunkWidth);
 
 		//v15
         verts[vertEnd + 4] = float3(float(voxels[vid].x + 1) * voxelSize, -10, float(voxels[vid].y + 1) * voxelSize);
-        normals[vertEnd + 4] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));
+        normals[vertEnd + 4] = voxels[vid].normal;
         uv0[vertEnd + 4] = float2(1, 0);
         uv1[vertEnd + 4] = float2(float(id.x) / chunkWidth, float(id.y + 1) / chunkWidth);
         
@@ -189,25 +186,25 @@ void SetVoxelVerts(uint3 id, uint vertStart) {
     {
 		//v16
         verts[vertEnd + 1] = float3(float(voxels[vid].x + 1) * voxelSize, -10, float(voxels[vid].y + 1) * voxelSize);
-        normals[vertEnd + 1] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));
+        normals[vertEnd + 1] = voxels[vid].normal;
         uv0[vertEnd + 1] = float2(0, 0);
         uv1[vertEnd + 1] = float2(float(id.x + 1) / chunkWidth, float(id.y) / chunkWidth);
 		
 		//v17
         verts[vertEnd + 2] = v2;
-        normals[vertEnd + 2] = normalize(lerp(voxels[vid].normalEast, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));
+        normals[vertEnd + 2] = voxels[vid].normal;
         uv0[vertEnd + 2] = float2(0, abs(verts[vertEnd + 2].y - verts[vertEnd + 1].y) / voxelSize);
         uv1[vertEnd + 2] = float2(float(id.x + 1) / chunkWidth, float(id.y) / chunkWidth);
 		
 		//v18
         verts[vertEnd + 3] = v1;
-        normals[vertEnd + 3] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));
+        normals[vertEnd + 3] = voxels[vid].normal;
         uv0[vertEnd + 3] = float2(1, abs(verts[vertEnd + 2].y - verts[vertEnd + 1].y) / voxelSize);
         uv1[vertEnd + 3] = float2(float(id.x) / chunkWidth, float(id.y) / chunkWidth);
 		
 		//v19
         verts[vertEnd + 4] = float3(voxels[vid].x * voxelSize, -10, float(voxels[vid].y + 1) * voxelSize);
-        normals[vertEnd + 4] = normalize(lerp(voxels[vid].normalWest, voxels[vid].normalNorth, float3(0.5, 0.5, 0.5)));
+        normals[vertEnd + 4] = voxels[vid].normal;
         uv0[vertEnd + 4] = float2(1, 0);
         uv1[vertEnd + 4] = float2(float(id.x) / chunkWidth, float(id.y) / chunkWidth);
         
@@ -276,7 +273,7 @@ void SetTris(uint vertStart, uint triStart, uint3 id) {
     }
 }
 
-[numthreads(8,8,1)]
+[numthreads(1,1,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
 	uint vid = id.x + (id.y * chunkWidth);

@@ -7,7 +7,7 @@ using Unity.Entities;
 
 namespace VoxelTerrain
 {
-    [CustomEditor(typeof(TerrainManager))]
+    //[CustomEditor(typeof(TerrainManager))]
     [CanEditMultipleObjects]
     public class TerrainManagerEditor : Editor
     {

@@ -57,10 +57,7 @@ namespace VoxelTerrain {
         public int x;
         public int y;
         public int height;
-        public float3 normalNorth;
-        public float3 normalSouth;
-        public float3 normalEast;
-        public float3 normalWest;
+        public float3 normal;
     }
 
     namespace Generators {
@@ -416,7 +413,7 @@ namespace VoxelTerrain {
                         climate = TerrainNoise.Climate(position.x * stride, position.y * stride, climateSettings, chunkPosition, chunkWidth, seed);
                         float height = TerrainNoise.GetHeightAtPoint(position.x, position.y, climate, biomes, stride, chunkPosition, chunkWidth, seed);
                         float3 heading = (new float3(position.x, height, position.y)) - new float3(voxel.x, voxel.height, voxel.y);
-
+                        /*
                         if (m == 0)
                         {
                             if (n == -1)
@@ -437,6 +434,7 @@ namespace VoxelTerrain {
                                 voxel.normalEast = math.normalizesafe(math.cross(new float3(0, 0, 1), heading));
                             }
                         }
+                        */
                     }
                 }
 
@@ -523,6 +521,7 @@ namespace VoxelTerrain {
                 eastHeight = (eastHeight / eastWeight);
                 westHeight = (westHeight / westWeight);
 
+                /*
                 float3 northHeading = (new float3(voxel.x, northHeight, voxel.y + 1)) - (new float3(voxel.x, voxel.height, voxel.y));
                 voxel.normalNorth = voxel.height == northHeight ? new float3(0, 1, 0) : math.normalizesafe(math.cross(new float3(-1, 0, 0), northHeading));
 
@@ -534,6 +533,7 @@ namespace VoxelTerrain {
 
                 float3 westHeading =  (new float3(voxel.x - 1, westHeight, voxel.y)) - (new float3(voxel.x, voxel.height, voxel.y));
                 voxel.normalWest =voxel.height == westHeight ? new float3(0, 1, 0) : math.normalizesafe(math.cross(new float3(0, 0, -1), westHeading));
+                */
 
                 chunkData[voxelId] = voxel;
             }

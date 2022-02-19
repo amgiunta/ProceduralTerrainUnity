@@ -14,10 +14,12 @@ using Unity.Jobs;
 using VoxelTerrain.ECS.Components;
 
 namespace VoxelTerrain.ECS.Systems {
-    [UpdateInGroup(typeof(InitializationSystemGroup), OrderFirst = true, OrderLast = false)]
+    [DisableAutoCreation]
+    [UpdateInGroup(typeof(InitializationSystemGroup))]
+    [UpdateAfter(typeof(SpawnVoxelTerrainChunkSystem))]
     public class GroundScatterSystem : SystemBase {
 
-        protected BeginPresentationEntityCommandBufferSystem ecbSystem;
+        protected EndInitializationEntityCommandBufferSystem ecbSystem;
         protected World defaultWorld;
         protected EntityManager entityManager;
         protected Biome[] biomes;
@@ -29,7 +31,7 @@ namespace VoxelTerrain.ECS.Systems {
         private int lastExecution;
 
         protected override void OnCreate() {
-            ecbSystem = World.GetOrCreateSystem<BeginPresentationEntityCommandBufferSystem>();
+            ecbSystem = World.GetOrCreateSystem<EndInitializationEntityCommandBufferSystem>();
             defaultWorld = World.DefaultGameObjectInjectionWorld;
             entityManager = defaultWorld.EntityManager;
         }

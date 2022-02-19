@@ -13,18 +13,16 @@ MonoBehaviour:
   m_Name: Flat
   m_EditorClassIdentifier: 
   color: {r: 0.14957604, g: 0.6226415, b: 0, a: 1}
-  maxTemperature: 0.86
+  maxTemperature: 0.837
   minTemperature: 0
-  maxMoisture: 0.86
+  maxMoisture: 0.837
   minMoisture: 0
   heightNormalIntensity: 0.87
   minTerrainHeight: 1
   maxTerrainHeight: 50
   generatorNoiseScale: {x: 234.37, y: 234.37}
   heightNormalNoiseScale: {x: 0.005, y: 0.005}
+  noiseRotation: 0.096
   persistance: 0.11
   lancunarity: 6.28
   octaves: 4
-  groundScatter:
-  - {fileID: 7602585808842905494, guid: 7412116cdc670834a997aaa9b6cba984, type: 3}
-  - {fileID: 7602585808842905494, guid: 15d220bbfad5ef54ca2f8b8092338da3, type: 3}

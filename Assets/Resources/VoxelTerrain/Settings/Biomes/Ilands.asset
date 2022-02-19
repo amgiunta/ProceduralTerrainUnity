@@ -16,12 +16,13 @@ MonoBehaviour:
   maxTemperature: 1
   minTemperature: 0.184
   maxMoisture: 1
-  minMoisture: 0.67
+  minMoisture: 0.438
   heightNormalIntensity: 0.44
   minTerrainHeight: -70
   maxTerrainHeight: 10
   generatorNoiseScale: {x: 500.09, y: 500}
   heightNormalNoiseScale: {x: 0.005, y: 0.005}
+  noiseRotation: 0
   persistance: 0.37
   lancunarity: 3.3
   octaves: 4

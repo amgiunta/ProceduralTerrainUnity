@@ -8,6 +8,7 @@ namespace VoxelTerrain
     {
         namespace Components
         {
+            [GenerateAuthoringComponent]
             public struct ChunkComponent : IComponentData
             {
                 public Grid grid;
