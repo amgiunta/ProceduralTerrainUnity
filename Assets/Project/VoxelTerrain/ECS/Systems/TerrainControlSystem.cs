@@ -165,38 +165,6 @@ namespace VoxelTerrain.ECS.Systems
                     x += dx;
                     y += dy;
                 }
-
-                /*
-                for (int y = 0; y <= radius * 2; y++)
-                {
-                    for (int x = 0; x <= radius * 2; x++)
-                    {
-                        int2 gridPosition = (new int2((x % radius) - radius, (y % radius) - radius)) + center;
-                        if (localChunks.ContainsKey(gridPosition)) { continue; }
-
-                        Entity entity = ecb.Instantiate(prefab);
-                        localChunks.Add(gridPosition, entity);
-
-                        ecb.AddBuffer<VoxelTerrainChunkGroundScatterBufferElement>(entity);
-                        ecb.AddBuffer<VoxelTerrainChunkVoxelBufferElement>(entity);
-                        ecb.AddBuffer<VoxelTerrainChunkClimateBufferElement>(entity);
-                        ecb.AddBuffer<VoxelTerrainChunkColorBufferElement>(entity);
-
-                        ecb.SetComponent(entity, new ChunkComponent
-                        {
-                            grid = grid,
-                            gridPosition = gridPosition
-                        });
-
-                        ecb.SetComponent(entity, new Translation
-                        {
-                            Value = new float3(gridPosition.x, 0, gridPosition.y) * (grid.voxelSize * grid.chunkSize)
-                        });
-
-                        return;
-                    }
-                }
-                */
             }).Schedule();
 
             ecbSystem.AddJobHandleForProducer(Dependency);
@@ -401,6 +369,36 @@ namespace VoxelTerrain.ECS.Systems
             ecbSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
+        private Texture2D GetClimateColors() {
+            NativeArray<VoxelTerrainChunkClimateBufferElement> climateBuffer = GetBuffer<VoxelTerrainChunkClimateBufferElement>(ClosestVoxelTerrainChunkData.closestChunkEntity.Data).AsNativeArray();
+            Color[] colorBuffer = new Color[climateBuffer.Length];
+
+            for (int i = 0; i < climateBuffer.Length; i++) {
+                colorBuffer[i] = climateBuffer[i];
+            }
+
+            Texture2D tex = new Texture2D(TerrainManager.instance.grid.chunkSize, TerrainManager.instance.grid.chunkSize);
+            tex.SetPixels(colorBuffer);
+            tex.Apply();
+            return tex;
+        }
+
+        private Texture2D GetBiomeColors()
+        {
+            NativeArray<VoxelTerrainChunkColorBufferElement> climateBuffer = GetBuffer<VoxelTerrainChunkColorBufferElement>(ClosestVoxelTerrainChunkData.closestChunkEntity.Data).AsNativeArray();
+            Color[] colorBuffer = new Color[climateBuffer.Length];
+
+            for (int i = 0; i < climateBuffer.Length; i++)
+            {
+                colorBuffer[i] = climateBuffer[i];
+            }
+
+            Texture2D tex = new Texture2D(TerrainManager.instance.grid.chunkSize, TerrainManager.instance.grid.chunkSize);
+            tex.SetPixels(colorBuffer);
+            tex.Apply();
+            return tex;
+        }
+
         protected override void OnUpdate()
         {
             if (ClosestVoxelTerrainChunkData.closestChunkEntity.Data == default) { return; }
@@ -411,9 +409,15 @@ namespace VoxelTerrain.ECS.Systems
 
             if (terrainVoxels.Length == 0) { return; }
 
+            
+
+            if (terrainVoxels.Length == 0) { return; }
+
             Mesh mesh = new Mesh();
             ChunkComponent chunkComponent = ClosestVoxelTerrainChunkData.closestChunk.Data;
             RenderMesh meshInstance = TerrainChunkConversionManager.renderMesh;
+
+            
 
             mesh.name = $"chunk {chunkComponent.gridPosition}";
 
@@ -502,6 +506,12 @@ namespace VoxelTerrain.ECS.Systems
                     uv1.Dispose();
                 });
             });
+
+            Texture2D climateTex = GetClimateColors();
+            Texture2D colorTex = GetBiomeColors();
+
+            meshInstance.material.SetTexture("climate_texture", climateTex);
+            meshInstance.material.SetTexture("color_texture", colorTex);
 
             ecbSystem.AddJobHandleForProducer(Dependency);
         }

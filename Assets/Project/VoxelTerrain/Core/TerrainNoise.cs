@@ -534,8 +534,7 @@ namespace VoxelTerrain
                 totalWeight += weight;
             }
 
-            float normalY = 1 - (math.abs(totalDx) + math.abs(totalDy));
-            normal = new float3(totalDx / totalWeight, -normalY, totalDy / totalWeight);
+            normal = math.normalize(new float3(-(totalDx / totalWeight), 1, -(totalDy / totalWeight)));
 
             return totalHeight / totalWeight;
         }
