@@ -27,6 +27,7 @@ namespace VoxelTerrain
             {
                 Entity prefabEntity = GameObjectConversionUtility.ConvertGameObjectHierarchy(chunkGameObjectPrefab, GameObjectConversionSettings.FromWorld(dstManager.World, assetStore));
                 dstManager.AddComponent<VoxelTerrainChunkNewTag>(prefabEntity);
+                dstManager.AddComponent<DisableRendering>(prefabEntity);
                 dstManager.AddBuffer<VoxelTerrainChunkGroundScatterBufferElement>(prefabEntity);
                 dstManager.AddBuffer<VoxelTerrainChunkVoxelBufferElement>(prefabEntity);
                 dstManager.AddBuffer<VoxelTerrainChunkClimateBufferElement>(prefabEntity);

@@ -25,6 +25,8 @@ namespace VoxelTerrain.ECS.Components {
 
     public struct VoxelTerrainChunkLoadedTag : IComponentData { }
 
+    public struct VoxelTerrainChunkRenderTag : IComponentData { }
+
     public struct VoxelTerrainChunkGroundScatterBufferElement : IBufferElementData {
         public static implicit operator GroundScatter(VoxelTerrainChunkGroundScatterBufferElement e) { return e.value; }
         public static implicit operator VoxelTerrainChunkGroundScatterBufferElement(GroundScatter e) { return new VoxelTerrainChunkGroundScatterBufferElement { value = e }; }
@@ -152,8 +154,6 @@ namespace VoxelTerrain.ECS.Systems
                             {
                                 Value = new float3(gridPosition.x, 0, gridPosition.y) * (grid.voxelSize * grid.chunkSize)
                             });
-
-                            return;
                         }
                     }
 
@@ -211,7 +211,7 @@ namespace VoxelTerrain.ECS.Systems
             Camera cam = Camera.main;
             float3 camPosition = cam.transform.position;
 
-            Entities.WithAll<ChunkComponent, RenderBounds, VoxelTerrainChunkNewTag>().
+            Entities.WithAll<ChunkComponent, VoxelTerrainChunkNewTag>().
             WithNone<VoxelTerrainChunkInitializedTag, VoxelTerrainChunkGeneratedTag, VoxelTerrainChunkLoadedTag>().
             WithoutBurst().
             ForEach((Entity entity, in Translation translation, in ChunkComponent chunk, in RenderBounds bounds) =>
@@ -235,12 +235,12 @@ namespace VoxelTerrain.ECS.Systems
         }
     }
 
-    [UpdateInGroup(typeof(InitializationSystemGroup))]
+    [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true, OrderLast = false)]
     [UpdateAfter(typeof(ClosestVoxelTerrainChunkFinderSystem))]
     public class GenerateVoxelTerrainChunkSystem : SystemBase
     {
-        protected BeginSimulationEntityCommandBufferSystem bufferSystem;
-        protected EndSimulationEntityCommandBufferSystem tagSystem;
+        protected EndSimulationEntityCommandBufferSystem bufferSystem;
+        protected BeginPresentationEntityCommandBufferSystem tagSystem;
         protected World defaultWorld;
         protected EntityManager entityManager;
 
@@ -250,8 +250,8 @@ namespace VoxelTerrain.ECS.Systems
 
         protected override void OnCreate()
         {
-            bufferSystem = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
-            tagSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            bufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            tagSystem = World.GetOrCreateSystem<BeginPresentationEntityCommandBufferSystem>();
             defaultWorld = World.DefaultGameObjectInjectionWorld;
             entityManager = defaultWorld.EntityManager;
         }
@@ -270,8 +270,13 @@ namespace VoxelTerrain.ECS.Systems
 
         protected override void OnUpdate()
         {
-            if (ClosestVoxelTerrainChunkData.closestChunkEntity.Data == default) {
-                return; 
+            if (ClosestVoxelTerrainChunkData.closestChunkEntity.Data == default)
+            {
+                Debug.LogWarning($"Skipping because ClosestVoxelTerrainChunkData is empty");
+                return;
+            }
+            else {
+                Debug.LogWarning("Not Skipping. ClosestVoxelTerrainChunkData not empty");
             }
             var tagEcb = tagSystem.CreateCommandBuffer();
 
@@ -355,11 +360,11 @@ namespace VoxelTerrain.ECS.Systems
         }
     }
 
-    [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true, OrderLast = false)]
+    [UpdateInGroup(typeof(PresentationSystemGroup), OrderFirst = true, OrderLast = false)]
     [UpdateAfter(typeof(GenerateVoxelTerrainChunkSystem))]
     public class GenerateVoxelTerrainMeshSystem : SystemBase
     {
-        protected EndSimulationEntityCommandBufferSystem ecbSystem;
+        protected BeginInitializationEntityCommandBufferSystem ecbSystem;
         protected World defaultWorld;
         protected EntityManager entityManager;
 
@@ -367,7 +372,7 @@ namespace VoxelTerrain.ECS.Systems
         {
             defaultWorld = World.DefaultGameObjectInjectionWorld;
             entityManager = defaultWorld.EntityManager;
-            ecbSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            ecbSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
         }
 
         private Texture2D GetClimateColors() {
@@ -410,15 +415,10 @@ namespace VoxelTerrain.ECS.Systems
 
             if (terrainVoxels.Length == 0) { return; }
 
-            
-
-            if (terrainVoxels.Length == 0) { return; }
-
             Mesh mesh = new Mesh();
+            Entity closestEntity = ClosestVoxelTerrainChunkData.closestChunkEntity.Data;
             ChunkComponent chunkComponent = ClosestVoxelTerrainChunkData.closestChunk.Data;
             RenderMesh meshInstance = TerrainChunkConversionManager.renderMesh;
-
-            
 
             mesh.name = $"chunk {chunkComponent.gridPosition}";
 
@@ -454,20 +454,24 @@ namespace VoxelTerrain.ECS.Systems
             aabb.Center = new float3((chunkComponent.grid.chunkSize * chunkComponent.grid.voxelSize) / 2, 500, (chunkComponent.grid.chunkSize * chunkComponent.grid.voxelSize) / 2);
             aabb.Extents = new float3(chunkComponent.grid.chunkSize * chunkComponent.grid.voxelSize, 1000, chunkComponent.grid.chunkSize * chunkComponent.grid.voxelSize);
 
-            ecb.SetComponent(ClosestVoxelTerrainChunkData.closestChunkEntity.Data, new RenderBounds { Value = aabb });
+            ecb.SetComponent(closestEntity, new RenderBounds { Value = aabb });
 
             meshInstance.mesh = mesh;
 
-            ecb.SetSharedComponent(ClosestVoxelTerrainChunkData.closestChunkEntity.Data, meshInstance);
-            ecb.AddComponent<VoxelTerrainChunkInitializedTag>(ClosestVoxelTerrainChunkData.closestChunkEntity.Data);
+            ecb.SetSharedComponent(closestEntity, meshInstance);
+            ecb.AddComponent<VoxelTerrainChunkInitializedTag>(closestEntity);
 
             AsyncGPUReadback.Request(verts, (AsyncGPUReadbackRequest request) => {
+                var tagEcb = ecbSystem.CreateCommandBuffer();
+
                 if (request.hasError) { Debug.LogError($"Could not get buffer data."); return; }
                 else if (!request.done) { Debug.Log("Not done yet..."); return; }
 
                 mesh.SetVertices(request.GetData<Vector3>());
                 verts.Dispose();
                 voxels.Dispose();
+
+                tagEcb.AddComponent<VoxelTerrainChunkRenderTag>(closestEntity);
 
                 AsyncGPUReadback.Request(tris, (AsyncGPUReadbackRequest request) =>
                 {
@@ -515,6 +519,30 @@ namespace VoxelTerrain.ECS.Systems
             meshInstance.material.SetTexture("color_texture", colorTex);
 
             ecbSystem.AddJobHandleForProducer(Dependency);
+        }
+    }
+
+    [UpdateInGroup(typeof(PresentationSystemGroup), OrderLast = false)]
+    [UpdateAfter(typeof(GenerateVoxelTerrainMeshSystem))]
+    public class RenderVoxelTerrainChunkSystem : SystemBase {
+        protected World defaultWorld;
+        protected EntityManager entityManager;
+
+        protected override void OnCreate()
+        {
+            defaultWorld = World.DefaultGameObjectInjectionWorld;
+            entityManager = defaultWorld.EntityManager;
+        }
+
+        protected override void OnUpdate()
+        {
+            Entities.
+            WithAll<VoxelTerrainChunkRenderTag>().
+            WithoutBurst().
+            ForEach((Entity e, in RenderMesh renderMesh, in LocalToWorld matrix) => {
+                Graphics.DrawMeshInstanced(renderMesh.mesh, 0, renderMesh.material, new Matrix4x4[] { matrix.Value});
+            }).
+            Run();
         }
     }
 }
