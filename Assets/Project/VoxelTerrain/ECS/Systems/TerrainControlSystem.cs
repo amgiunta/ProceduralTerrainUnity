@@ -135,10 +135,12 @@ namespace VoxelTerrain.ECS.Systems
                             Entity entity = ecb.Instantiate(prefab);
                             localChunks.Add(gridPosition, entity);
 
+                            /*
                             ecb.AddBuffer<VoxelTerrainChunkGroundScatterBufferElement>(entity);
                             ecb.AddBuffer<VoxelTerrainChunkVoxelBufferElement>(entity);
                             ecb.AddBuffer<VoxelTerrainChunkClimateBufferElement>(entity);
                             ecb.AddBuffer<VoxelTerrainChunkColorBufferElement>(entity);
+                            */
 
                             ecb.SetComponent(entity, new ChunkComponent
                             {
@@ -269,7 +271,6 @@ namespace VoxelTerrain.ECS.Systems
         protected override void OnUpdate()
         {
             if (ClosestVoxelTerrainChunkData.closestChunkEntity.Data == default) {
-                Debug.Log("Skipping Chunk Generation because entiity is null");
                 return; 
             }
             var tagEcb = tagSystem.CreateCommandBuffer();

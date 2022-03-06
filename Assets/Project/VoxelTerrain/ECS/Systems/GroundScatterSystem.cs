@@ -14,12 +14,11 @@ using Unity.Jobs;
 using VoxelTerrain.ECS.Components;
 
 namespace VoxelTerrain.ECS.Systems {
-    [DisableAutoCreation]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
-    [UpdateAfter(typeof(SpawnVoxelTerrainChunkSystem))]
+    [UpdateAfter(typeof(ClosestVoxelTerrainChunkData))]
     public class GroundScatterSystem : SystemBase {
 
-        protected EndInitializationEntityCommandBufferSystem ecbSystem;
+        protected EndSimulationEntityCommandBufferSystem ecbSystem;
         protected World defaultWorld;
         protected EntityManager entityManager;
         protected Biome[] biomes;
@@ -31,7 +30,7 @@ namespace VoxelTerrain.ECS.Systems {
         private int lastExecution;
 
         protected override void OnCreate() {
-            ecbSystem = World.GetOrCreateSystem<EndInitializationEntityCommandBufferSystem>();
+            ecbSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
             defaultWorld = World.DefaultGameObjectInjectionWorld;
             entityManager = defaultWorld.EntityManager;
         }
@@ -84,16 +83,13 @@ namespace VoxelTerrain.ECS.Systems {
 
         protected override void OnUpdate()
         {
-            frame = UnityEngine.Time.frameCount;
-            if (frame == 0 || frame - lastExecution < framesToExecution) { return; }
-            lastExecution = frame;
+            if (ClosestVoxelTerrainChunkData.closestChunkEntity.Data == default || GroundScatterEntityManager.convertedPrefabs.Count == 0) { return; }
 
-            Translation closestChunkTranslation = default;
-            ChunkComponent closestChunk = default;
-            Entity closestChunkEntity = GetNearestChunk(out closestChunk, out closestChunkTranslation);
-            if (closestChunkEntity == default) { return; }
-
+            NativeArray<VoxelTerrainChunkGroundScatterBufferElement> groundScatterArray = GetBuffer<VoxelTerrainChunkGroundScatterBufferElement>(ClosestVoxelTerrainChunkData.closestChunkEntity.Data).AsNativeArray();
             NativeArray<JobHandle> jobs = new NativeArray<JobHandle>(GroundScatterEntityManager.convertedPrefabs.Count, Allocator.Temp);
+            Entity chunkEntity = ClosestVoxelTerrainChunkData.closestChunkEntity.Data;
+            ChunkComponent chunkEntityComponent = ClosestVoxelTerrainChunkData.closestChunk.Data;
+            Translation chunkEntityTranslation = ClosestVoxelTerrainChunkData.closestChunkTranslation.Data;
             uint seedFrame = (uint)frame;
             
             int count = 0;
@@ -102,28 +98,36 @@ namespace VoxelTerrain.ECS.Systems {
                 var ecb = ecbSystem.CreateCommandBuffer().AsParallelWriter();
                 Entity prefab = scatterPrefab.Value;
                 GroundScatter groundScatter = scatterPrefab.Key;
+
+                if (groundScatterArray.Contains(groundScatter)) { continue; }
+
                 ClimateSettings localClimateSettings = climateSettings;
                 Scale prefabScale = entityManager.GetComponentData<Scale>(scatterPrefab.Value);
                 RotationConstraints rotationConstraints = entityManager.GetComponentData<RotationConstraints>(scatterPrefab.Value);
                 int localTerrainSeed = terrainSeed;
                 NativeArray<Biome> nativeBiomes = new NativeArray<Biome>(biomes, Allocator.TempJob);
 
+
                 var spawnJob = Job.WithBurst().
+                //WithReadOnly(groundScatterArray).
                 WithReadOnly(nativeBiomes).WithDisposeOnCompletion(nativeBiomes).
                 WithCode(() =>
                 {
-                    ecb.AddComponent<ScatterApplied>(0, closestChunkEntity);
+                    VoxelTerrainChunkGroundScatterBufferElement scatterBufferElement = new VoxelTerrainChunkGroundScatterBufferElement { value = groundScatter };
+                    ecb.AppendToBuffer(0, chunkEntity, scatterBufferElement);
+
+                    //ecb.AddComponent<ScatterApplied>(0, closestChunkEntity);
                     uint processSeed = (uint) seedFrame;
-                    Unity.Mathematics.Random rng = new Unity.Mathematics.Random(processSeed + (uint) count);
+                    Unity.Mathematics.Random rng = new Unity.Mathematics.Random(processSeed + (uint) count +1);
 
                     for (int i = 0; i < groundScatter.scatterDensity; i++)
                     {
-                        float x = math.lerp(0, closestChunk.grid.chunkSize, rng.NextFloat(0, 1));
-                        processSeed += (uint) count + (uint) i * 100;
+                        float x = math.lerp(0, chunkEntityComponent.grid.chunkSize, rng.NextFloat(0, 1));
+                        processSeed += ((uint) count + 1) + (uint) i * 100;
                         rng = new Unity.Mathematics.Random(processSeed);
-                        float z = math.lerp(0, closestChunk.grid.chunkSize, rng.NextFloat(0, 1));
+                        float z = math.lerp(0, chunkEntityComponent.grid.chunkSize, rng.NextFloat(0, 1));
 
-                        float2 climate = TerrainNoise.Climate(x, z, localClimateSettings, closestChunk.gridPosition, closestChunk.grid.chunkSize, localTerrainSeed);
+                        float2 climate = TerrainNoise.Climate(x, z, localClimateSettings, chunkEntityComponent.gridPosition, chunkEntityComponent.grid.chunkSize, localTerrainSeed);
                         
                         float climateIdealness = TerrainNoise.ClimateIdealness(new float2(groundScatter.minTemperature, groundScatter.minMoisture), new float2(groundScatter.maxTemperature, groundScatter.maxMoisture), climate, groundScatter.heartiness);
                         float random = rng.NextFloat(0, 1);
@@ -132,7 +136,7 @@ namespace VoxelTerrain.ECS.Systems {
                             continue;
                         }
 
-                        float height = TerrainNoise.GetHeightAtPoint(x, z, climate, nativeBiomes, 1, closestChunk.gridPosition, closestChunk.grid.chunkSize, localTerrainSeed);
+                        float height = TerrainNoise.GetHeightAndNormalAtPoint(x, z, climate, nativeBiomes, 1, chunkEntityComponent.gridPosition, chunkEntityComponent.grid.chunkSize, localTerrainSeed, out _);
                         if (height > groundScatter.maxHeight || height < groundScatter.minHeight) {
                             continue;
                         }
@@ -154,7 +158,7 @@ namespace VoxelTerrain.ECS.Systems {
                         }
 
                         float3 position = new float3(x, height, z);
-                        float3 worldPosition = new float3(closestChunkTranslation.Value.x + (position.x * closestChunk.grid.voxelSize), height, closestChunkTranslation.Value.z + (position.z * closestChunk.grid.voxelSize));
+                        float3 worldPosition = new float3(chunkEntityTranslation.Value.x + (position.x * chunkEntityComponent.grid.voxelSize), height, chunkEntityTranslation.Value.z + (position.z * chunkEntityComponent.grid.voxelSize));
 
                         Entity scatterEntity = ecb.Instantiate(i, prefab);
                         ecb.SetComponent(i, scatterEntity, new Translation { Value = worldPosition});
@@ -167,6 +171,8 @@ namespace VoxelTerrain.ECS.Systems {
                 count++;
                 ecbSystem.AddJobHandleForProducer(spawnJob);
             }
+
+            groundScatterArray.Dispose();
 
             Dependency = JobHandle.CombineDependencies(jobs);
             jobs.Dispose();

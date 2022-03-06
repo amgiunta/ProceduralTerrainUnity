@@ -27,8 +27,12 @@ namespace VoxelTerrain
             {
                 Entity prefabEntity = GameObjectConversionUtility.ConvertGameObjectHierarchy(chunkGameObjectPrefab, GameObjectConversionSettings.FromWorld(dstManager.World, assetStore));
                 dstManager.AddComponent<VoxelTerrainChunkNewTag>(prefabEntity);
+                dstManager.AddBuffer<VoxelTerrainChunkGroundScatterBufferElement>(prefabEntity);
+                dstManager.AddBuffer<VoxelTerrainChunkVoxelBufferElement>(prefabEntity);
+                dstManager.AddBuffer<VoxelTerrainChunkClimateBufferElement>(prefabEntity);
+                dstManager.AddBuffer<VoxelTerrainChunkColorBufferElement>(prefabEntity);
+
                 renderMesh = new RenderMesh { material = chunkGameObjectPrefab.GetComponent<MeshRenderer>().sharedMaterial };
-                //dstManager.AddSharedComponentData(prefabEntity, renderMesh);
                 chunkPrefab = prefabEntity;
             }
         }
