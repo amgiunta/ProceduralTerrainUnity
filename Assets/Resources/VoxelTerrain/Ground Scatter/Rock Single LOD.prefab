@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &5083258118838876655
+--- !u!1 &527945271803762983
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,39 +8,37 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 8977117749914707653}
-  - component: {fileID: 4787485296176518306}
-  - component: {fileID: 3155140409497085902}
-  - component: {fileID: 1927426692531088236}
-  - component: {fileID: -2790025693882664504}
+  - component: {fileID: 8058461996915724593}
+  - component: {fileID: 7439677525288674146}
+  - component: {fileID: 3068724676800860888}
   m_Layer: 0
-  m_Name: Rock Single LOD
+  m_Name: Mesh
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 4294967295
+  m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &8977117749914707653
+--- !u!4 &8058461996915724593
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5083258118838876655}
+  m_GameObject: {fileID: 527945271803762983}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.18352, y: 0.18352, z: 0.18352}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 8977117749914707653}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!23 &4787485296176518306
+--- !u!23 &7439677525288674146
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5083258118838876655}
+  m_GameObject: {fileID: 527945271803762983}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
@@ -75,14 +73,48 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!33 &3155140409497085902
+--- !u!33 &3068724676800860888
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5083258118838876655}
+  m_GameObject: {fileID: 527945271803762983}
   m_Mesh: {fileID: -5495902117074765545, guid: c0b0d1ed1da39c44c94e9f84fde3f84c, type: 3}
+--- !u!1 &5083258118838876655
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8977117749914707653}
+  - component: {fileID: 1927426692531088236}
+  - component: {fileID: -2790025693882664504}
+  - component: {fileID: 7932489882039853410}
+  m_Layer: 0
+  m_Name: Rock Single LOD
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 4294967295
+  m_IsActive: 1
+--- !u!4 &8977117749914707653
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5083258118838876655}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 0.18352, y: 0.18352, z: 0.18352}
+  m_Children:
+  - {fileID: 8058461996915724593}
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1927426692531088236
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -95,7 +127,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c5e0a987224c196448a1633511b4e4a6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  scatterDensity: 25
+  scatterDensity: 10
   heartiness: 0.92
   minTemperature: 0
   maxTemperature: 1
@@ -123,3 +155,22 @@ MonoBehaviour:
   x: 0
   y: 0
   z: 0
+--- !u!205 &7932489882039853410
+LODGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5083258118838876655}
+  serializedVersion: 2
+  m_LocalReferencePoint: {x: 0.16817689, y: -0.02022171, z: -0.01809287}
+  m_Size: 3.628274
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
+  m_LastLODIsBillboard: 0
+  m_LODs:
+  - screenRelativeHeight: 0.0044746725
+    fadeTransitionWidth: 0
+    renderers:
+    - renderer: {fileID: 7439677525288674146}
+  m_Enabled: 1

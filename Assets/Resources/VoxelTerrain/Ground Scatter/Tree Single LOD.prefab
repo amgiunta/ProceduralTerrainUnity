@@ -127,7 +127,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c5e0a987224c196448a1633511b4e4a6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  scatterDensity: 50
+  scatterDensity: 10
   heartiness: 0.695
   minTemperature: 0
   maxTemperature: 1
@@ -169,7 +169,7 @@ LODGroup:
   m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
-  - screenRelativeHeight: 0.0311825
+  - screenRelativeHeight: 0.014906526
     fadeTransitionWidth: 0
     renderers:
     - renderer: {fileID: 7032867721589971031}

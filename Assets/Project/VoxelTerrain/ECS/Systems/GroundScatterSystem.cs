@@ -13,12 +13,19 @@ using Unity.Rendering.HybridV2;
 using Unity.Jobs;
 using VoxelTerrain.ECS.Components;
 
+namespace VoxelTerrain.ECS.Components {
+    public struct VoxelTerrainGroundScatterNewTag : IComponentData { }
+    public struct VoxelTerrainGroundScatterInitializedTag : IComponentData { }
+
+    public struct VoxelTerrainGroundScatterMovedTag : IComponentData { }
+}
+
 namespace VoxelTerrain.ECS.Systems {
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     [UpdateAfter(typeof(ClosestVoxelTerrainChunkData))]
-    public class GroundScatterSystem : SystemBase {
+    public class GroundScatterSpawnSystem : SystemBase {
 
-        protected EndSimulationEntityCommandBufferSystem ecbSystem;
+        protected EndInitializationEntityCommandBufferSystem ecbSystem;
         protected World defaultWorld;
         protected EntityManager entityManager;
         protected Biome[] biomes;
@@ -30,7 +37,7 @@ namespace VoxelTerrain.ECS.Systems {
         private int lastExecution;
 
         protected override void OnCreate() {
-            ecbSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            ecbSystem = World.GetOrCreateSystem<EndInitializationEntityCommandBufferSystem>();
             defaultWorld = World.DefaultGameObjectInjectionWorld;
             entityManager = defaultWorld.EntityManager;
         }
@@ -105,12 +112,12 @@ namespace VoxelTerrain.ECS.Systems {
                 Scale prefabScale = entityManager.GetComponentData<Scale>(scatterPrefab.Value);
                 RotationConstraints rotationConstraints = entityManager.GetComponentData<RotationConstraints>(scatterPrefab.Value);
                 int localTerrainSeed = terrainSeed;
-                NativeArray<Biome> nativeBiomes = new NativeArray<Biome>(biomes, Allocator.TempJob);
+                //NativeArray<Biome> nativeBiomes = new NativeArray<Biome>(biomes, Allocator.TempJob);
 
 
                 var spawnJob = Job.WithBurst().
                 //WithReadOnly(groundScatterArray).
-                WithReadOnly(nativeBiomes).WithDisposeOnCompletion(nativeBiomes).
+                //WithReadOnly(nativeBiomes).WithDisposeOnCompletion(nativeBiomes).
                 WithCode(() =>
                 {
                     VoxelTerrainChunkGroundScatterBufferElement scatterBufferElement = new VoxelTerrainChunkGroundScatterBufferElement { value = groundScatter };
@@ -122,6 +129,13 @@ namespace VoxelTerrain.ECS.Systems {
 
                     for (int i = 0; i < groundScatter.scatterDensity; i++)
                     {
+                        Entity scatterEntity = ecb.Instantiate(i, prefab);
+                        //groundScatter.chunk = chunkEntityComponent;
+
+                        //ecb.SetComponent<GroundScatter>(i, scatterEntity, groundScatter);
+                        //ecb.AddComponent<VoxelTerrainGroundScatterInitializedTag>(i, scatterEntity);
+
+                        /*
                         float x = math.lerp(0, chunkEntityComponent.grid.chunkSize, rng.NextFloat(0, 1));
                         processSeed += ((uint) count + 1) + (uint) i * 100;
                         rng = new Unity.Mathematics.Random(processSeed);
@@ -135,11 +149,12 @@ namespace VoxelTerrain.ECS.Systems {
                         if (random > climateIdealness) {
                             continue;
                         }
-
+                        
                         float height = TerrainNoise.GetHeightAndNormalAtPoint(x, z, climate, nativeBiomes, 1, chunkEntityComponent.gridPosition, chunkEntityComponent.grid.chunkSize, localTerrainSeed, out _);
                         if (height > groundScatter.maxHeight || height < groundScatter.minHeight) {
                             continue;
                         }
+                        
 
                         var scale = prefabScale.Value + prefabScale.Value * (rng.NextFloat(-0.3f, 0.3f));
 
@@ -164,6 +179,7 @@ namespace VoxelTerrain.ECS.Systems {
                         ecb.SetComponent(i, scatterEntity, new Translation { Value = worldPosition});
                         ecb.SetComponent(i, scatterEntity, new Scale { Value = scale });
                         ecb.SetComponent(i, scatterEntity, new Rotation { Value = rot });
+                        */
                     }
                 }).Schedule(Dependency);
 
@@ -176,6 +192,97 @@ namespace VoxelTerrain.ECS.Systems {
 
             Dependency = JobHandle.CombineDependencies(jobs);
             jobs.Dispose();
+        }
+    }
+
+    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateAfter(typeof(GenerateVoxelTerrainChunkSystem))]
+    public class GroundScatterMoveSystem : SystemBase {
+        protected BeginInitializationEntityCommandBufferSystem ecbSystem;
+        protected World defaultWorld;
+        protected EntityManager entityManager;
+
+        protected override void OnCreate()
+        {
+            ecbSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
+            defaultWorld = World.DefaultGameObjectInjectionWorld;
+            entityManager = defaultWorld.EntityManager;
+        }
+
+        protected override void OnUpdate()
+        {
+            var pecb = ecbSystem.CreateCommandBuffer().AsParallelWriter();
+
+            var chunkEntityComponent = ClosestVoxelTerrainChunkData.closestChunk.Data;
+            var chunkEntityTranslation = ClosestVoxelTerrainChunkData.closestChunkTranslation.Data;
+            NativeArray<VoxelTerrainChunkVoxelBufferElement> chunkVoxels = GetBuffer<VoxelTerrainChunkVoxelBufferElement>(ClosestVoxelTerrainChunkData.closestChunkEntity.Data).AsNativeArray();
+            NativeArray<VoxelTerrainChunkClimateBufferElement> chunkClimate = GetBuffer<VoxelTerrainChunkClimateBufferElement>(ClosestVoxelTerrainChunkData.closestChunkEntity.Data).AsNativeArray();
+
+            Entities.
+            WithReadOnly(chunkVoxels).
+            WithReadOnly(chunkClimate).
+            WithAll<VoxelTerrainGroundScatterNewTag>().
+            WithNone<VoxelTerrainGroundScatterInitializedTag>().
+            WithBurst().
+            ForEach((int entityInQueryIndex, Entity e, ref Translation translation, ref Scale scale, ref Rotation rotation, in RotationConstraints rotationConstraints, in GroundScatter groundScatter) => {
+                Unity.Mathematics.Random rng = new Unity.Mathematics.Random((uint) (e.Index + entityInQueryIndex));
+                rng = new Unity.Mathematics.Random(rng.NextUInt(1, uint.MaxValue));
+
+                float x = rng.NextInt(0, chunkEntityComponent.grid.chunkSize);
+                rng = new Unity.Mathematics.Random(rng.NextUInt(1, uint.MaxValue));
+                float z = rng.NextInt(0, chunkEntityComponent.grid.chunkSize);
+
+                int bufferIndex = (int)((chunkEntityComponent.grid.chunkSize * z) + x);
+                bufferIndex = bufferIndex >= chunkVoxels.Length ? chunkVoxels.Length - 1 : bufferIndex;
+
+                Voxel voxel = chunkVoxels[bufferIndex];
+
+                float2 climate = chunkClimate[bufferIndex];
+
+                float climateIdealness = TerrainNoise.ClimateIdealness(new float2(groundScatter.minTemperature, groundScatter.minMoisture), new float2(groundScatter.maxTemperature, groundScatter.maxMoisture), climate, groundScatter.heartiness);
+
+                rng = new Unity.Mathematics.Random(rng.NextUInt(1, uint.MaxValue));
+                float random = rng.NextFloat(0, 1);
+
+                if (random > climateIdealness)
+                {
+                    return;
+                }
+
+                if (voxel.height > groundScatter.maxHeight || voxel.height < groundScatter.minHeight)
+                {
+                    return;
+                }
+
+                var scaleValue = scale.Value + scale.Value * (rng.NextFloat(-0.3f, 0.3f));
+
+                quaternion rot = quaternion.identity;
+
+                if (!rotationConstraints.x)
+                {
+                    rot = math.mul(rot, quaternion.AxisAngle(new float3(1, 0, 0), rng.NextFloat(0, 360)));
+                }
+                else if (!rotationConstraints.y)
+                {
+                    rot = math.mul(rot, quaternion.AxisAngle(new float3(0, 1, 0), rng.NextFloat(0, 360)));
+                }
+                else if (!rotationConstraints.z)
+                {
+                    rot = math.mul(rot, quaternion.AxisAngle(new float3(0, 0, 1), rng.NextFloat(0, 360)));
+                }
+
+                float3 position = new float3(x, voxel.height, z);
+                float3 worldPosition = new float3(chunkEntityTranslation.Value.x + (position.x * chunkEntityComponent.grid.voxelSize), position.y, chunkEntityTranslation.Value.z + (position.z * chunkEntityComponent.grid.voxelSize));
+
+                translation.Value = worldPosition;
+                scale.Value = scaleValue;
+                rotation.Value = rot;
+
+                pecb.RemoveComponent<DisableRendering>(entityInQueryIndex, e);
+                //pecb.AddComponent<RenderInstanced>(entityInQueryIndex, e);
+                pecb.AddComponent<VoxelTerrainGroundScatterInitializedTag>(entityInQueryIndex, e);
+            })
+            .ScheduleParallel();
         }
     }
 }

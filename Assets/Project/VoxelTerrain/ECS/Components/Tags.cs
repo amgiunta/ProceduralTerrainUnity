@@ -12,4 +12,6 @@ namespace VoxelTerrain.ECS.Components
     public struct ReadyToSpawn : IComponentData { }
 
     public struct FrustumCull : IComponentData { }
+
+    public struct RenderInstanced : IComponentData { }
 }

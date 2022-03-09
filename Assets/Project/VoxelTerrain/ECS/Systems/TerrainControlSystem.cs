@@ -41,17 +41,25 @@ namespace VoxelTerrain.ECS.Components {
         public Voxel value;
     }
 
-    public struct VoxelTerrainChunkClimateBufferElement : IBufferElementData {
-        public static implicit operator Color(VoxelTerrainChunkClimateBufferElement e) { return e.value; }
-        public static implicit operator VoxelTerrainChunkClimateBufferElement(Color e) { return new VoxelTerrainChunkClimateBufferElement { value = e }; }
+    public struct VoxelTerrainChunkClimateBufferElement : IBufferElementData
+    {
+        public static implicit operator float2(VoxelTerrainChunkClimateBufferElement e) { return e.value; }
+        public static implicit operator VoxelTerrainChunkClimateBufferElement(float2 e) { return new VoxelTerrainChunkClimateBufferElement { value = e }; }
+
+        public float2 value;
+    }
+
+    public struct VoxelTerrainChunkClimateColorBufferElement : IBufferElementData {
+        public static implicit operator Color(VoxelTerrainChunkClimateColorBufferElement e) { return e.value; }
+        public static implicit operator VoxelTerrainChunkClimateColorBufferElement(Color e) { return new VoxelTerrainChunkClimateColorBufferElement { value = e }; }
         
         public Color value;
     }
 
-    public struct VoxelTerrainChunkColorBufferElement : IBufferElementData
+    public struct VoxelTerrainChunkTerrainColorBufferElement : IBufferElementData
     {
-        public static implicit operator Color(VoxelTerrainChunkColorBufferElement e) { return e.value; }
-        public static implicit operator VoxelTerrainChunkColorBufferElement(Color e) { return new VoxelTerrainChunkColorBufferElement { value = e }; }
+        public static implicit operator Color(VoxelTerrainChunkTerrainColorBufferElement e) { return e.value; }
+        public static implicit operator VoxelTerrainChunkTerrainColorBufferElement(Color e) { return new VoxelTerrainChunkTerrainColorBufferElement { value = e }; }
 
         public Color value;
     }
@@ -136,13 +144,6 @@ namespace VoxelTerrain.ECS.Systems
 
                             Entity entity = ecb.Instantiate(prefab);
                             localChunks.Add(gridPosition, entity);
-
-                            /*
-                            ecb.AddBuffer<VoxelTerrainChunkGroundScatterBufferElement>(entity);
-                            ecb.AddBuffer<VoxelTerrainChunkVoxelBufferElement>(entity);
-                            ecb.AddBuffer<VoxelTerrainChunkClimateBufferElement>(entity);
-                            ecb.AddBuffer<VoxelTerrainChunkColorBufferElement>(entity);
-                            */
 
                             ecb.SetComponent(entity, new ChunkComponent
                             {
@@ -286,7 +287,8 @@ namespace VoxelTerrain.ECS.Systems
             int chunkWidth = TerrainManager.instance.grid.chunkSize;
             NativeArray<VoxelTerrainChunkVoxelBufferElement> voxelBuffer = new NativeArray<VoxelTerrainChunkVoxelBufferElement>(chunkWidth * chunkWidth, Allocator.TempJob);
             NativeArray<VoxelTerrainChunkClimateBufferElement> climateBuffer = new NativeArray<VoxelTerrainChunkClimateBufferElement>(chunkWidth * chunkWidth, Allocator.TempJob);
-            NativeArray<VoxelTerrainChunkColorBufferElement> colorBuffer = new NativeArray<VoxelTerrainChunkColorBufferElement>(chunkWidth * chunkWidth, Allocator.TempJob);
+            NativeArray<VoxelTerrainChunkClimateColorBufferElement> climateColorBuffer = new NativeArray<VoxelTerrainChunkClimateColorBufferElement>(chunkWidth * chunkWidth, Allocator.TempJob);
+            NativeArray<VoxelTerrainChunkTerrainColorBufferElement> terrainColorBuffer = new NativeArray<VoxelTerrainChunkTerrainColorBufferElement>(chunkWidth * chunkWidth, Allocator.TempJob);
 
             NativeArray<Biome> biomes = new NativeArray<Biome>(terrainBiomes, Allocator.TempJob);
             ClimateSettings climateSettings = TerrainManager.instance.terrainSettings;
@@ -310,14 +312,15 @@ namespace VoxelTerrain.ECS.Systems
                     voxel.y = i / chunkWidth;
 
                     float2 climate = TerrainNoise.Climate(voxel.x * stride, voxel.y * stride, climateSettings, chunkPosition, chunkWidth, seed);
-                    climateBuffer[i] = new Color(climate.x, 0, climate.y, 1);
+                    climateBuffer[i] = climate;
+                    climateColorBuffer[i] = new Color(climate.x, 0, climate.y, 1);
 
                     float3 normal = new float3(0, 1, 0);
 
                     voxel.height = (int)TerrainNoise.GetHeightAndNormalAtPoint(voxel.x, voxel.y, climate, biomes, stride, chunkPosition, chunkWidth, seed, out normal);
                     voxel.normal = normal;
 
-                    colorBuffer[i] = TerrainNoise.GetColorAtPoint(biomes, climate);
+                    terrainColorBuffer[i] = TerrainNoise.GetColorAtPoint(biomes, climate);
                     voxelBuffer[i] = voxel;
                 }
             }).Schedule(Dependency);
@@ -332,7 +335,8 @@ namespace VoxelTerrain.ECS.Systems
 
             Dependency = Job.
             WithReadOnly(voxelBuffer).WithDisposeOnCompletion(voxelBuffer).
-            WithReadOnly(colorBuffer).WithDisposeOnCompletion(colorBuffer).
+            WithReadOnly(terrainColorBuffer).WithDisposeOnCompletion(terrainColorBuffer).
+            WithReadOnly(climateColorBuffer).WithDisposeOnCompletion(climateColorBuffer).
             WithReadOnly(climateBuffer).WithDisposeOnCompletion(climateBuffer).
             WithReadOnly(biomes).WithDisposeOnCompletion(biomes).
             WithBurst().
@@ -343,12 +347,14 @@ namespace VoxelTerrain.ECS.Systems
                 var dynamicVoxelBuffer = bufferEcb.SetBuffer<VoxelTerrainChunkVoxelBufferElement>(closestChunkEntity);
                 dynamicVoxelBuffer.AddRange(voxelBuffer);
 
-                var dynamicColorBuffer = bufferEcb.SetBuffer<VoxelTerrainChunkColorBufferElement>(closestChunkEntity);
-                dynamicColorBuffer.AddRange(colorBuffer);
+                var dynamicColorBuffer = bufferEcb.SetBuffer<VoxelTerrainChunkTerrainColorBufferElement>(closestChunkEntity);
+                dynamicColorBuffer.AddRange(terrainColorBuffer);
+
+                var dynamicClimateColorBuffer = bufferEcb.SetBuffer<VoxelTerrainChunkClimateColorBufferElement>(closestChunkEntity);
+                dynamicClimateColorBuffer.AddRange(climateColorBuffer);
 
                 var dynamicClimateBuffer = bufferEcb.SetBuffer<VoxelTerrainChunkClimateBufferElement>(closestChunkEntity);
                 dynamicClimateBuffer.AddRange(climateBuffer);
-
 
                 tagEcb.AddComponent<VoxelTerrainChunkGeneratedTag>(closestChunkEntity);
             }).Schedule(generatorJob);
@@ -376,7 +382,7 @@ namespace VoxelTerrain.ECS.Systems
         }
 
         private Texture2D GetClimateColors() {
-            NativeArray<VoxelTerrainChunkClimateBufferElement> climateBuffer = GetBuffer<VoxelTerrainChunkClimateBufferElement>(ClosestVoxelTerrainChunkData.closestChunkEntity.Data).AsNativeArray();
+            NativeArray<VoxelTerrainChunkClimateColorBufferElement> climateBuffer = GetBuffer<VoxelTerrainChunkClimateColorBufferElement>(ClosestVoxelTerrainChunkData.closestChunkEntity.Data).AsNativeArray();
             Color[] colorBuffer = new Color[climateBuffer.Length];
 
             for (int i = 0; i < climateBuffer.Length; i++) {
@@ -391,7 +397,7 @@ namespace VoxelTerrain.ECS.Systems
 
         private Texture2D GetBiomeColors()
         {
-            NativeArray<VoxelTerrainChunkColorBufferElement> climateBuffer = GetBuffer<VoxelTerrainChunkColorBufferElement>(ClosestVoxelTerrainChunkData.closestChunkEntity.Data).AsNativeArray();
+            NativeArray<VoxelTerrainChunkTerrainColorBufferElement> climateBuffer = GetBuffer<VoxelTerrainChunkTerrainColorBufferElement>(ClosestVoxelTerrainChunkData.closestChunkEntity.Data).AsNativeArray();
             Color[] colorBuffer = new Color[climateBuffer.Length];
 
             for (int i = 0; i < climateBuffer.Length; i++)
@@ -472,6 +478,7 @@ namespace VoxelTerrain.ECS.Systems
                 voxels.Dispose();
 
                 tagEcb.AddComponent<VoxelTerrainChunkRenderTag>(closestEntity);
+                tagEcb.AddComponent<RenderInstanced>(closestEntity);
 
                 AsyncGPUReadback.Request(tris, (AsyncGPUReadbackRequest request) =>
                 {
@@ -522,6 +529,7 @@ namespace VoxelTerrain.ECS.Systems
         }
     }
 
+    /*
     [UpdateInGroup(typeof(PresentationSystemGroup), OrderLast = false)]
     [UpdateAfter(typeof(GenerateVoxelTerrainMeshSystem))]
     public class RenderVoxelTerrainChunkSystem : SystemBase {
@@ -545,4 +553,5 @@ namespace VoxelTerrain.ECS.Systems
             Run();
         }
     }
+    */
 }

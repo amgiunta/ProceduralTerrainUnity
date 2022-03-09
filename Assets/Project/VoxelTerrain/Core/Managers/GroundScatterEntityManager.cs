@@ -5,6 +5,7 @@ using UnityEngine;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Transforms;
+using Unity.Rendering;
 
 using VoxelTerrain.ECS.Components;
 
@@ -28,6 +29,9 @@ namespace VoxelTerrain
 
                     dstManager.AddComponent<Scale>(prefabEntity);
                     dstManager.SetComponentData(prefabEntity, new Scale { Value = prefabGo.transform.localScale.x});
+
+                    dstManager.AddComponent<VoxelTerrainGroundScatterNewTag>(prefabEntity);
+                    dstManager.AddComponent<DisableRendering>(prefabEntity);
 
                     if (!dstManager.HasComponent<RotationConstraints>(prefabEntity)) {
                         dstManager.AddComponent<RotationConstraints>(prefabEntity);
