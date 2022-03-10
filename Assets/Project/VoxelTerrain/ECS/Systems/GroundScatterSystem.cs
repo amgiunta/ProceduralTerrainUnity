@@ -46,10 +46,10 @@ namespace VoxelTerrain.ECS.Systems {
         {
             climateSettings = TerrainManager.instance.terrainSettings;
             terrainSeed = TerrainManager.instance.terrainSettings.seed;
-            biomes = new Biome[TerrainManager.instance.biomes.Count];
+            biomes = new Biome[TerrainManager.instance.terrainSettings.biomes.Count];
             framesToExecution = 5 * GroundScatterEntityManager.convertedPrefabs.Count;
             int count = 0;
-            foreach (Biome biome in TerrainManager.instance.biomes) {
+            foreach (Biome biome in TerrainManager.instance.terrainSettings.biomes) {
                 biomes[count] = biome;
                 count++;
             }

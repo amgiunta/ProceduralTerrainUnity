@@ -27,11 +27,11 @@ public class PlayerController : MonoBehaviour
 
     public int2 gridPosition {
         get {
-            int vx = Mathf.FloorToInt(transform.position.x * TerrainManager.instance.grid.voxelSize);
-            int vy = Mathf.FloorToInt(transform.position.z * TerrainManager.instance.grid.voxelSize);
+            int vx = Mathf.FloorToInt(transform.position.x * TerrainManager.instance.terrainSettings.grid.voxelSize);
+            int vy = Mathf.FloorToInt(transform.position.z * TerrainManager.instance.terrainSettings.grid.voxelSize);
             return new int2(
-                vx / TerrainManager.instance.grid.chunkSize,
-                vy / TerrainManager.instance.grid.chunkSize
+                vx / TerrainManager.instance.terrainSettings.grid.chunkSize,
+                vy / TerrainManager.instance.terrainSettings.grid.chunkSize
             );
         }
     }
@@ -57,21 +57,6 @@ public class PlayerController : MonoBehaviour
         moveable = true;
         Cursor.visible = false;
         targetLook = transform.rotation;
-    }
-
-    void EarlyUpdate() { 
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        TerrainManager.instance.StartLoadingChunks(gridPosition);
-    }
-
-    private void LateUpdate()
-    {
-        //TerrainControlSystem.instance.CreateChunks(TerrainManager.instance.renderDistance, gridPosition, TerrainManager.instance.grid);
     }
 
     private void FixedUpdate()

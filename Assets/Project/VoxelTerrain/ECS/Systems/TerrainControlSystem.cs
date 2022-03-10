@@ -119,9 +119,9 @@ namespace VoxelTerrain.ECS.Systems
 
             var ecb = ecbSystem.CreateCommandBuffer();
 
-            int radius = (int)TerrainManager.instance.renderDistance;
+            int radius = (int)TerrainManager.instance.terrainSettings.renderDistance;
             int2 center = WorldToGridSpace(cam.transform.position);
-            Grid grid = TerrainManager.instance.grid;
+            Grid grid = TerrainManager.instance.terrainSettings.grid;
             Entity prefab = TerrainChunkConversionManager.chunkPrefab;
 
             NativeHashMap<int2, Entity> localChunks = chunks;
@@ -175,11 +175,11 @@ namespace VoxelTerrain.ECS.Systems
 
         private int2 WorldToGridSpace(Vector3 position)
         {
-            int vx = (int) math.floor(position.x * TerrainManager.instance.grid.voxelSize);
-            int vy = (int) math.floor(position.z * TerrainManager.instance.grid.voxelSize);
+            int vx = (int) math.floor(position.x * TerrainManager.instance.terrainSettings.grid.voxelSize);
+            int vy = (int) math.floor(position.z * TerrainManager.instance.terrainSettings.grid.voxelSize);
             return new int2(
-                vx / TerrainManager.instance.grid.chunkSize,
-                vy / TerrainManager.instance.grid.chunkSize
+                vx / TerrainManager.instance.terrainSettings.grid.chunkSize,
+                vy / TerrainManager.instance.terrainSettings.grid.chunkSize
             );
         }
     }
@@ -259,11 +259,11 @@ namespace VoxelTerrain.ECS.Systems
 
         protected override void OnStartRunning()
         {
-            terrainBiomes = new Biome[TerrainManager.instance.biomes.Count];
+            terrainBiomes = new Biome[TerrainManager.instance.terrainSettings.biomes.Count];
 
-            for (int i = 0; i < TerrainManager.instance.biomes.Count; i++)
+            for (int i = 0; i < TerrainManager.instance.terrainSettings.biomes.Count; i++)
             {
-                terrainBiomes[i] = TerrainManager.instance.biomes[i];
+                terrainBiomes[i] = TerrainManager.instance.terrainSettings.biomes[i];
             }
 
             terrainRandom = new Unity.Mathematics.Random(TerrainManager.instance.terrainSettings.seed == 0 ? 1 : (uint)TerrainManager.instance.terrainSettings.seed);
@@ -280,7 +280,7 @@ namespace VoxelTerrain.ECS.Systems
             Profiler.BeginSample("Create Voxel Generator Job");
             #region GenerateVoxelsJob
 
-            int chunkWidth = TerrainManager.instance.grid.chunkSize;
+            int chunkWidth = TerrainManager.instance.terrainSettings.grid.chunkSize;
             NativeArray<VoxelTerrainChunkVoxelBufferElement> voxelBuffer = new NativeArray<VoxelTerrainChunkVoxelBufferElement>(chunkWidth * chunkWidth, Allocator.TempJob);
             NativeArray<VoxelTerrainChunkClimateBufferElement> climateBuffer = new NativeArray<VoxelTerrainChunkClimateBufferElement>(chunkWidth * chunkWidth, Allocator.TempJob);
             NativeArray<VoxelTerrainChunkClimateColorBufferElement> climateColorBuffer = new NativeArray<VoxelTerrainChunkClimateColorBufferElement>(chunkWidth * chunkWidth, Allocator.TempJob);
@@ -385,7 +385,7 @@ namespace VoxelTerrain.ECS.Systems
                 colorBuffer[i] = climateBuffer[i];
             }
 
-            Texture2D tex = new Texture2D(TerrainManager.instance.grid.chunkSize, TerrainManager.instance.grid.chunkSize);
+            Texture2D tex = new Texture2D(TerrainManager.instance.terrainSettings.grid.chunkSize, TerrainManager.instance.terrainSettings.grid.chunkSize);
             tex.SetPixels(colorBuffer);
             tex.Apply();
             return tex;
@@ -401,7 +401,7 @@ namespace VoxelTerrain.ECS.Systems
                 colorBuffer[i] = climateBuffer[i];
             }
 
-            Texture2D tex = new Texture2D(TerrainManager.instance.grid.chunkSize, TerrainManager.instance.grid.chunkSize);
+            Texture2D tex = new Texture2D(TerrainManager.instance.terrainSettings.grid.chunkSize, TerrainManager.instance.terrainSettings.grid.chunkSize);
             tex.SetPixels(colorBuffer);
             tex.Apply();
             return tex;

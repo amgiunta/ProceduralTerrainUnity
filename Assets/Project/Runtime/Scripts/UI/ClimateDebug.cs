@@ -22,13 +22,13 @@ public class ClimateDebug : MonoBehaviour
     void Update()
     {
         float2 localPosition = new float2(
-            (player.transform.position.x * TerrainManager.instance.grid.voxelSize) % TerrainManager.instance.grid.chunkSize,
-            (player.transform.position.z * TerrainManager.instance.grid.voxelSize) % TerrainManager.instance.grid.chunkSize
+            (player.transform.position.x * TerrainManager.instance.terrainSettings.grid.voxelSize) % TerrainManager.instance.terrainSettings.grid.chunkSize,
+            (player.transform.position.z * TerrainManager.instance.terrainSettings.grid.voxelSize) % TerrainManager.instance.terrainSettings.grid.chunkSize
         );
 
         float2 climate = TerrainNoise.Climate(localPosition.x, localPosition.y, 
             TerrainManager.instance.terrainSettings, player.gridPosition, 
-            TerrainManager.instance.grid.chunkSize, TerrainManager.instance.terrainSettings.seed
+            TerrainManager.instance.terrainSettings.grid.chunkSize, TerrainManager.instance.terrainSettings.seed
         );
 
         tempText.text = climate.x.ToString();

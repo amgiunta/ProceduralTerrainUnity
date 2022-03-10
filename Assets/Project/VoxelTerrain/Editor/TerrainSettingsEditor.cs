@@ -11,7 +11,14 @@ namespace VoxelTerrain
     public class TerrainSettingsEditor : Editor
     {
         SerializedObject so;
+
         SerializedProperty propSeed;
+
+        SerializedProperty propWorldName;
+        SerializedProperty propGrid;
+        SerializedProperty propBiomes;
+        SerializedProperty propRenderDistance;
+
         SerializedProperty propMinTemperature;
         SerializedProperty propMaxTemperature;
         SerializedProperty propTemperatureLancunarity;
@@ -19,6 +26,7 @@ namespace VoxelTerrain
         SerializedProperty propTemperatureOctaves;
         SerializedProperty propTemperatureScale;
         SerializedProperty propTemperatureOffset;
+
         SerializedProperty propMinMoisture;
         SerializedProperty propMaxMoisture;
         SerializedProperty propMoistureLancunarity;
@@ -36,6 +44,12 @@ namespace VoxelTerrain
             so = serializedObject;
 
             propSeed = so.FindProperty("seed");
+
+            propWorldName = so.FindProperty("worldName");
+            propGrid = so.FindProperty("grid");
+            propBiomes = so.FindProperty("biomes");
+            propRenderDistance = so.FindProperty("renderDistance");
+
             propMinTemperature = so.FindProperty("minTemperature");
             propMaxTemperature = so.FindProperty("maxTemperature");
             propTemperatureLancunarity = so.FindProperty("temperatureLancunarity");
@@ -43,6 +57,7 @@ namespace VoxelTerrain
             propTemperatureOctaves = so.FindProperty("temperatureOctaves");
             propTemperatureScale = so.FindProperty("temperatureScale");
             propTemperatureOffset = so.FindProperty("temperatureOffset");
+
             propMinMoisture = so.FindProperty("minMoisture");
             propMaxMoisture = so.FindProperty("maxMoisture");
             propMoistureLancunarity = so.FindProperty("moistureLancunarity");
@@ -61,6 +76,10 @@ namespace VoxelTerrain
             EditorGUI.BeginChangeCheck();
 
             EditorGUILayout.PropertyField(propSeed);
+            EditorGUILayout.PropertyField(propWorldName);
+            EditorGUILayout.PropertyField(propGrid);
+            EditorGUILayout.PropertyField(propBiomes);
+            EditorGUILayout.PropertyField(propRenderDistance);
 
             EditorGUILayout.LabelField("Climate Properties");
             EditorGUILayout.Space(25);

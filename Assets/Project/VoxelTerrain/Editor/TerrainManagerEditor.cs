@@ -49,7 +49,7 @@ namespace VoxelTerrain
             biomes = new List<Biome>();
             previewTexture = new Texture2D(0,0);
 
-            foreach (BiomeObject bo in manager.biomes) {
+            foreach (BiomeObject bo in settings.biomes) {
                 biomes.Add(bo);
             }
 
@@ -92,7 +92,7 @@ namespace VoxelTerrain
 
             if (EditorGUI.EndChangeCheck()) {
                 biomes = new List<Biome>();
-                foreach (BiomeObject bo in manager.biomes)
+                foreach (BiomeObject bo in settings.biomes)
                 {
                     biomes.Add(bo);
                 }
@@ -120,7 +120,7 @@ namespace VoxelTerrain
                 if (GUILayout.Button("Generate Preview"))
                 {
                     biomes = new List<Biome>();
-                    foreach (BiomeObject bo in manager.biomes)
+                    foreach (BiomeObject bo in settings.biomes)
                     {
                         biomes.Add(bo);
                     }

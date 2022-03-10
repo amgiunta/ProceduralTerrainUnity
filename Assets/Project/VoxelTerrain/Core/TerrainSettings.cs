@@ -10,6 +10,12 @@ namespace VoxelTerrain
     {
         public int seed;
 
+        public string worldName = "NewWorld";
+        public Grid grid;
+
+        public List<BiomeObject> biomes;
+        [Range(1, 500)] public float renderDistance;
+
         [Range(0, 1)] public float minTemperature = 0;
         [Range(0, 1)] public float maxTemperature = 1;
         public float temperatureLancunarity = 1;
