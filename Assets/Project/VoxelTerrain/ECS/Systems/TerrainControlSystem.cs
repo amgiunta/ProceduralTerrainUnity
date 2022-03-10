@@ -273,11 +273,7 @@ namespace VoxelTerrain.ECS.Systems
         {
             if (ClosestVoxelTerrainChunkData.closestChunkEntity.Data == default)
             {
-                Debug.LogWarning($"Skipping because ClosestVoxelTerrainChunkData is empty");
                 return;
-            }
-            else {
-                Debug.LogWarning("Not Skipping. ClosestVoxelTerrainChunkData not empty");
             }
             var tagEcb = tagSystem.CreateCommandBuffer();
 
