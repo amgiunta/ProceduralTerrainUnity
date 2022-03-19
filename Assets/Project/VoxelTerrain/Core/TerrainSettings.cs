@@ -13,6 +13,8 @@ namespace VoxelTerrain
         public string worldName = "NewWorld";
         public Grid grid;
 
+        public GameObject chunkPrefab;
+
         public List<BiomeObject> biomes;
         [Range(1, 500)] public float renderDistance;
 

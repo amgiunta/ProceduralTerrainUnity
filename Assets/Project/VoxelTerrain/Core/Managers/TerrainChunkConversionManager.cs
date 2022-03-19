@@ -11,6 +11,7 @@ using VoxelTerrain.ECS.Components;
 
 namespace VoxelTerrain
 {
+    [ExecuteInEditMode]
     public class TerrainChunkConversionManager : MonoBehaviour, IConvertGameObjectToEntity
     {
         public static Entity chunkPrefab;
