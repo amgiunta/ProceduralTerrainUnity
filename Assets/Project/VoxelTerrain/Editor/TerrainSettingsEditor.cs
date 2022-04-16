@@ -27,6 +27,9 @@ namespace VoxelTerrain
         SerializedProperty propTemperatureScale;
         SerializedProperty propTemperatureOffset;
 
+        SerializedProperty propVoxelVertecies;
+        SerializedProperty propVoxelTris;
+
         SerializedProperty propMinMoisture;
         SerializedProperty propMaxMoisture;
         SerializedProperty propMoistureLancunarity;
@@ -58,6 +61,9 @@ namespace VoxelTerrain
             propTemperatureScale = so.FindProperty("temperatureScale");
             propTemperatureOffset = so.FindProperty("temperatureOffset");
 
+            propVoxelVertecies = so.FindProperty("voxelVertecies");
+            propVoxelTris = so.FindProperty("voxelTris");
+
             propMinMoisture = so.FindProperty("minMoisture");
             propMaxMoisture = so.FindProperty("maxMoisture");
             propMoistureLancunarity = so.FindProperty("moistureLancunarity");
@@ -80,6 +86,8 @@ namespace VoxelTerrain
             EditorGUILayout.PropertyField(propGrid);
             EditorGUILayout.PropertyField(propBiomes);
             EditorGUILayout.PropertyField(propRenderDistance);
+            EditorGUILayout.PropertyField(propVoxelVertecies);
+            EditorGUILayout.PropertyField(propVoxelTris);
 
             EditorGUILayout.LabelField("Climate Properties");
             EditorGUILayout.Space(25);

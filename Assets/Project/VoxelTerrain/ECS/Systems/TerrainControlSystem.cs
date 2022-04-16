@@ -281,10 +281,10 @@ namespace VoxelTerrain.ECS.Systems
             #region GenerateVoxelsJob
 
             int chunkWidth = TerrainManager.instance.terrainSettings.grid.chunkSize;
-            NativeArray<VoxelTerrainChunkVoxelBufferElement> voxelBuffer = new NativeArray<VoxelTerrainChunkVoxelBufferElement>(chunkWidth * chunkWidth, Allocator.TempJob);
-            NativeArray<VoxelTerrainChunkClimateBufferElement> climateBuffer = new NativeArray<VoxelTerrainChunkClimateBufferElement>(chunkWidth * chunkWidth, Allocator.TempJob);
-            NativeArray<VoxelTerrainChunkClimateColorBufferElement> climateColorBuffer = new NativeArray<VoxelTerrainChunkClimateColorBufferElement>(chunkWidth * chunkWidth, Allocator.TempJob);
-            NativeArray<VoxelTerrainChunkTerrainColorBufferElement> terrainColorBuffer = new NativeArray<VoxelTerrainChunkTerrainColorBufferElement>(chunkWidth * chunkWidth, Allocator.TempJob);
+            NativeArray<VoxelTerrainChunkVoxelBufferElement> voxelBuffer = new NativeArray<VoxelTerrainChunkVoxelBufferElement>((chunkWidth * chunkWidth) + (2 * chunkWidth), Allocator.TempJob);
+            NativeArray<VoxelTerrainChunkClimateBufferElement> climateBuffer = new NativeArray<VoxelTerrainChunkClimateBufferElement>((chunkWidth * chunkWidth) + (2 * chunkWidth), Allocator.TempJob);
+            NativeArray<VoxelTerrainChunkClimateColorBufferElement> climateColorBuffer = new NativeArray<VoxelTerrainChunkClimateColorBufferElement>((chunkWidth * chunkWidth) + (2 * chunkWidth), Allocator.TempJob);
+            NativeArray<VoxelTerrainChunkTerrainColorBufferElement> terrainColorBuffer = new NativeArray<VoxelTerrainChunkTerrainColorBufferElement>((chunkWidth * chunkWidth) + (2 * chunkWidth), Allocator.TempJob);
 
             NativeArray<Biome> biomes = new NativeArray<Biome>(terrainBiomes, Allocator.TempJob);
             ClimateSettings climateSettings = TerrainManager.instance.terrainSettings;
@@ -297,15 +297,15 @@ namespace VoxelTerrain.ECS.Systems
             JobHandle generatorJob = Job.
             WithBurst().WithCode(() =>
             {
-                for (int i = 0; i < chunkWidth * chunkWidth; i++)
+                for (int i = 0; i < (chunkWidth * chunkWidth) + (2 * chunkWidth); i++)
                 {
                     int2 chunkPosition = closestChunk.gridPosition;
 
                     int stride = 1;
 
                     Voxel voxel = new Voxel();
-                    voxel.x = i % chunkWidth;
-                    voxel.y = i / chunkWidth;
+                    voxel.x = i % (chunkWidth + 1);
+                    voxel.y = i / (chunkWidth + 1);
 
                     float2 climate = TerrainNoise.Climate(voxel.x * stride, voxel.y * stride, climateSettings, chunkPosition, chunkWidth, seed);
                     climateBuffer[i] = climate;
@@ -427,8 +427,9 @@ namespace VoxelTerrain.ECS.Systems
             int sizeVector3 = sizeof(float) * 3;
             int sizeVector2 = sizeof(float) * 2;
             int sizeVoxel = (sizeof(int) * 3) + (sizeVector3);
-            int vertCount = (terrainVoxels.Length * 12) + (chunkComponent.grid.chunkSize * 8);
-            int indexCount = (terrainVoxels.Length * 18) + (chunkComponent.grid.chunkSize * 12);
+            int chunkWidth = TerrainManager.instance.terrainSettings.grid.chunkSize;
+            int vertCount = chunkWidth * TerrainManager.instance.terrainSettings.voxelVertecies;
+            int indexCount = chunkWidth * TerrainManager.instance.terrainSettings.voxelIdexies;
 
             ComputeBuffer voxels = new ComputeBuffer(terrainVoxels.Length, sizeVoxel);
             voxels.SetData(terrainVoxels);
@@ -440,14 +441,14 @@ namespace VoxelTerrain.ECS.Systems
             ComputeBuffer uv1 = new ComputeBuffer(vertCount, sizeVector2);
 
             meshGenerator.SetFloat("voxelSize", chunkComponent.grid.voxelSize);
-            meshGenerator.SetInt("chunkWidth", chunkComponent.grid.chunkSize);
+            meshGenerator.SetInt("chunkWidth", chunkWidth+1);
 
             meshGenerator.SetBuffer(0, "voxels", voxels);
             meshGenerator.SetBuffer(0, "verts", verts);
             meshGenerator.SetBuffer(0, "tris", tris);
             meshGenerator.SetBuffer(0, "normals", normals);
-            meshGenerator.SetBuffer(0, "uv0", uv0);
-            meshGenerator.SetBuffer(0, "uv1", uv1);
+            meshGenerator.SetBuffer(0, "uv0s", uv0);
+            meshGenerator.SetBuffer(0, "uv1s", uv1);
 
             // Run computation
             meshGenerator.Dispatch(0, chunkComponent.grid.chunkSize, chunkComponent.grid.chunkSize, 1);

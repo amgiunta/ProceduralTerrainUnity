@@ -1,0 +1,118 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+struct Voxel {
+	int x;
+	int y;
+	int height;
+    float3 normal;
+};
+
+// Chunk data
+float voxelSize;
+uint chunkWidth;
+
+RWStructuredBuffer<Voxel> voxels;
+
+// Mesh data
+RWStructuredBuffer<float3> verts;
+RWStructuredBuffer<int> tris;
+RWStructuredBuffer<float3> normals;
+RWStructuredBuffer<float2> uv0s;
+RWStructuredBuffer<float2> uv1s;
+
+void SetDataForVoxel(uint3 id)
+{
+    int index = (id.y * chunkWidth + id.x) * 4;
+    int triIndex = (id.y * chunkWidth + id.x) * 6;
+    Voxel voxel = voxels[id.y * chunkWidth + id.x];
+    Voxel north = voxels[(id.y + 1) * chunkWidth + id.x];
+    Voxel east = voxels[id.y * chunkWidth + id.x + 1];
+    Voxel northeast = voxels[(id.y + 1) * chunkWidth + id.x + 1];
+    for (int i = 0; i < 4; i++)
+    {
+        float3 position;
+        float3 normal;
+        float2 uv0;
+        float2 uv1;
+        if (i == 0)
+        {
+            normal = voxel.normal;
+            position = float3(
+                float(voxel.x) - 0.5,
+                float(voxel.height),
+                float(voxel.y) - 0.5
+            );
+            uv0 = float2(
+                0,
+                0
+            );
+        }
+        else if (i == 1)
+        {
+            normal = north.normal;
+            position = float3(
+                float(north.x) - 0.5,
+                float(north.height),
+                float(north.y) - 0.5
+            );
+            uv0 = float2(
+                0,
+                1
+            );
+        }
+        else if (i == 2)
+        {
+            normal = northeast.normal;
+            position = float3(
+                float(northeast.x) - 0.5,
+                float(northeast.height),
+                float(northeast.y) - 0.5
+            );
+            uv0 = float2(
+                1,
+                1
+            );
+        }
+        else
+        {
+            normal = east.normal;
+            position = float3(
+                float(east.x) - 0.5,
+                float(east.height),
+                float(east.y) - 0.5
+            );
+            uv0 = float2(
+                0,
+                1
+            );
+        }
+        
+        uv1 = float2(
+            position.x / chunkWidth,
+            position.y / chunkWidth
+        );
+        
+        verts[index + i] = position * voxelSize;
+        normals[index + i] = normal;
+        uv0s[index + i] = uv0;
+        uv1s[index + i] = uv1;
+    }
+
+    tris[triIndex] = index;
+    tris[triIndex + 1] = index + 1;
+    tris[triIndex + 2] = index + 3;
+    tris[triIndex + 3] = index + 1;
+    tris[triIndex + 4] = index + 2;
+    tris[triIndex + 5] = index + 3;
+}
+
+[numthreads(1,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x % chunkWidth == 0 || id.y % chunkWidth == 0)
+    {
+        return;
+    }
+    SetDataForVoxel(id);
+}

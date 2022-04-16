@@ -34,6 +34,8 @@ MonoBehaviour:
   temperatureOffset:
     x: 4654
     y: 687
+  voxelVertecies: 4
+  voxelTris: 2
   minMoisture: 0
   maxMoisture: 1
   moistureLancunarity: 1.05456

@@ -24,6 +24,14 @@ namespace VoxelTerrain
         public float2 temperatureScale;
         public float2 temperatureOffset;
 
+        public int voxelVertecies;
+        public int voxelTris;
+        public int voxelIdexies {
+            get {
+                return voxelTris * 3;
+            }
+        }
+
         [Range(0, 1)] public float minMoisture = 0;
         [Range(0, 1)] public float maxMoisture = 1;
         public float moistureLancunarity = 1;
