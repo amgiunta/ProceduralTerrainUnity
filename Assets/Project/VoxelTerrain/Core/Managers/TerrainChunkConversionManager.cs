@@ -29,7 +29,11 @@ namespace VoxelTerrain
                 dstManager.AddComponent<VoxelTerrainChunkNewTag>(prefabEntity);
                 dstManager.AddComponent<DisableRendering>(prefabEntity);
                 dstManager.AddBuffer<VoxelTerrainChunkGroundScatterBufferElement>(prefabEntity);
+
                 dstManager.AddBuffer<VoxelTerrainChunkVoxelBufferElement>(prefabEntity);
+                dstManager.AddBuffer<VoxelTerrainChunkTopEdgeBufferElement>(prefabEntity);
+                dstManager.AddBuffer<VoxelTerrainChunkRightEdgeBufferElement>(prefabEntity);
+
                 dstManager.AddBuffer<VoxelTerrainChunkClimateBufferElement>(prefabEntity);
                 dstManager.AddBuffer<VoxelTerrainChunkClimateColorBufferElement>(prefabEntity);
                 dstManager.AddBuffer<VoxelTerrainChunkTerrainColorBufferElement>(prefabEntity);

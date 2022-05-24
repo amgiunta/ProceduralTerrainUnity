@@ -211,6 +211,7 @@ namespace VoxelTerrain.ECS.Systems {
 
         protected override void OnUpdate()
         {
+            if (ClosestVoxelTerrainChunkData.closestChunkEntity.Data == default) { return; }
             var pecb = ecbSystem.CreateCommandBuffer().AsParallelWriter();
 
             var chunkEntityComponent = ClosestVoxelTerrainChunkData.closestChunk.Data;
@@ -249,7 +250,7 @@ namespace VoxelTerrain.ECS.Systems {
                     return;
                 }
 
-                if (voxel.height > groundScatter.maxHeight || voxel.height < groundScatter.minHeight)
+                if (voxel.position.y > groundScatter.maxHeight || voxel.position.y < groundScatter.minHeight)
                 {
                     return;
                 }
@@ -271,7 +272,7 @@ namespace VoxelTerrain.ECS.Systems {
                     rot = math.mul(rot, quaternion.AxisAngle(new float3(0, 0, 1), rng.NextFloat(0, 360)));
                 }
 
-                float3 position = new float3(x, voxel.height, z);
+                float3 position = new float3(x, voxel.position.y, z);
                 float3 worldPosition = new float3(chunkEntityTranslation.Value.x + (position.x * chunkEntityComponent.grid.voxelSize), position.y, chunkEntityTranslation.Value.z + (position.z * chunkEntityComponent.grid.voxelSize));
 
                 translation.Value = worldPosition;

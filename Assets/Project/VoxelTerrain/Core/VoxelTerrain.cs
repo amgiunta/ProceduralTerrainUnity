@@ -19,9 +19,7 @@ namespace VoxelTerrain {
 
     [System.Serializable]
     public struct Voxel {
-        public int x;
-        public int y;
-        public int height;
+        public float3 position;
         public float3 normal;
     }
 }

@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &7613897743789007268
+--- !u!1 &2636036768359303749
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,87 +8,46 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 6262254268418179875}
-  - component: {fileID: 3192956975488700767}
-  - component: {fileID: 9052694362729800179}
-  - component: {fileID: 5381904128909217989}
-  - component: {fileID: 2061553824987131243}
+  - component: {fileID: 33176529655241170}
+  - component: {fileID: 5533202561330947927}
+  - component: {fileID: 8997622679807744487}
+  - component: {fileID: 7469560534118266119}
   m_Layer: 0
-  m_Name: Tree No LOD
+  m_Name: UV 0 Test
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &6262254268418179875
+--- !u!4 &33176529655241170
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7613897743789007268}
+  m_GameObject: {fileID: 2636036768359303749}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: -100, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &3192956975488700767
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7613897743789007268}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c5e0a987224c196448a1633511b4e4a6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  scatterDensity: 10
-  heartiness: 0.695
-  minTemperature: 0
-  maxTemperature: 1
-  minMoisture: 0
-  maxMoisture: 1
-  maxHeight: 100
-  minHeight: 1
-  offset:
-    x: 0
-    y: 0.5
-    z: 0
-  jitterFactor: 1
---- !u!114 &9052694362729800179
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7613897743789007268}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0f3394b9c3acc084ba8654a11d2c8b74, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  x: 1
-  y: 0
-  z: 1
---- !u!33 &5381904128909217989
+--- !u!33 &5533202561330947927
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7613897743789007268}
-  m_Mesh: {fileID: -2432090755550338912, guid: 3a000f390b11b0a46933986e90e30912, type: 3}
---- !u!23 &2061553824987131243
+  m_GameObject: {fileID: 2636036768359303749}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!23 &8997622679807744487
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7613897743789007268}
+  m_GameObject: {fileID: 2636036768359303749}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
@@ -101,7 +60,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: e142d8b1c1897ad4788e90d4e6eb64a4, type: 2}
+  - {fileID: 2100000, guid: f38cce11a51a9034da7ac3dc9ad282dd, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -123,3 +82,21 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &7469560534118266119
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2636036768359303749}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 49af1bc57e72dd84cbe68fd69f5b6585, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  grid:
+    voxelSize: 1
+    chunkSize: 64
+  gridPosition:
+    x: 0
+    y: 0

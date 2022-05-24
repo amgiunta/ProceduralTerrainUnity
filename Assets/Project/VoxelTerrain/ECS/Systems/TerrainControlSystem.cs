@@ -41,6 +41,22 @@ namespace VoxelTerrain.ECS.Components {
         public Voxel value;
     }
 
+    public struct VoxelTerrainChunkTopEdgeBufferElement : IBufferElementData
+    {
+        public static implicit operator Voxel(VoxelTerrainChunkTopEdgeBufferElement e) { return e.value; }
+        public static implicit operator VoxelTerrainChunkTopEdgeBufferElement(Voxel e) { return new VoxelTerrainChunkTopEdgeBufferElement { value = e }; }
+
+        public Voxel value;
+    }
+
+    public struct VoxelTerrainChunkRightEdgeBufferElement : IBufferElementData
+    {
+        public static implicit operator Voxel(VoxelTerrainChunkRightEdgeBufferElement e) { return e.value; }
+        public static implicit operator VoxelTerrainChunkRightEdgeBufferElement(Voxel e) { return new VoxelTerrainChunkRightEdgeBufferElement { value = e }; }
+
+        public Voxel value;
+    }
+
     public struct VoxelTerrainChunkClimateBufferElement : IBufferElementData
     {
         public static implicit operator float2(VoxelTerrainChunkClimateBufferElement e) { return e.value; }
@@ -281,10 +297,13 @@ namespace VoxelTerrain.ECS.Systems
             #region GenerateVoxelsJob
 
             int chunkWidth = TerrainManager.instance.terrainSettings.grid.chunkSize;
-            NativeArray<VoxelTerrainChunkVoxelBufferElement> voxelBuffer = new NativeArray<VoxelTerrainChunkVoxelBufferElement>((chunkWidth * chunkWidth) + (2 * chunkWidth), Allocator.TempJob);
-            NativeArray<VoxelTerrainChunkClimateBufferElement> climateBuffer = new NativeArray<VoxelTerrainChunkClimateBufferElement>((chunkWidth * chunkWidth) + (2 * chunkWidth), Allocator.TempJob);
-            NativeArray<VoxelTerrainChunkClimateColorBufferElement> climateColorBuffer = new NativeArray<VoxelTerrainChunkClimateColorBufferElement>((chunkWidth * chunkWidth) + (2 * chunkWidth), Allocator.TempJob);
-            NativeArray<VoxelTerrainChunkTerrainColorBufferElement> terrainColorBuffer = new NativeArray<VoxelTerrainChunkTerrainColorBufferElement>((chunkWidth * chunkWidth) + (2 * chunkWidth), Allocator.TempJob);
+            NativeArray<VoxelTerrainChunkVoxelBufferElement> voxelBuffer = new NativeArray<VoxelTerrainChunkVoxelBufferElement>(chunkWidth * chunkWidth, Allocator.TempJob);
+            NativeArray<VoxelTerrainChunkTopEdgeBufferElement> topEdgeBuffer = new NativeArray<VoxelTerrainChunkTopEdgeBufferElement>(chunkWidth + 1, Allocator.TempJob);
+            NativeArray<VoxelTerrainChunkRightEdgeBufferElement> rightEdgeBuffer = new NativeArray<VoxelTerrainChunkRightEdgeBufferElement>(chunkWidth, Allocator.TempJob);
+
+            NativeArray<VoxelTerrainChunkClimateBufferElement> climateBuffer = new NativeArray<VoxelTerrainChunkClimateBufferElement>(chunkWidth * chunkWidth, Allocator.TempJob);
+            NativeArray<VoxelTerrainChunkClimateColorBufferElement> climateColorBuffer = new NativeArray<VoxelTerrainChunkClimateColorBufferElement>(chunkWidth * chunkWidth, Allocator.TempJob);
+            NativeArray<VoxelTerrainChunkTerrainColorBufferElement> terrainColorBuffer = new NativeArray<VoxelTerrainChunkTerrainColorBufferElement>(chunkWidth * chunkWidth, Allocator.TempJob);
 
             NativeArray<Biome> biomes = new NativeArray<Biome>(terrainBiomes, Allocator.TempJob);
             ClimateSettings climateSettings = TerrainManager.instance.terrainSettings;
@@ -297,27 +316,43 @@ namespace VoxelTerrain.ECS.Systems
             JobHandle generatorJob = Job.
             WithBurst().WithCode(() =>
             {
-                for (int i = 0; i < (chunkWidth * chunkWidth) + (2 * chunkWidth); i++)
+                for (int i = 0; i < (chunkWidth * chunkWidth) + (2 * chunkWidth + 1); i++)
                 {
                     int2 chunkPosition = closestChunk.gridPosition;
 
                     int stride = 1;
 
                     Voxel voxel = new Voxel();
-                    voxel.x = i % (chunkWidth + 1);
-                    voxel.y = i / (chunkWidth + 1);
+                    int x = i % (chunkWidth + 1);
+                    int y = i / (chunkWidth + 1);
 
-                    float2 climate = TerrainNoise.Climate(voxel.x * stride, voxel.y * stride, climateSettings, chunkPosition, chunkWidth, seed);
-                    climateBuffer[i] = climate;
-                    climateColorBuffer[i] = new Color(climate.x, 0, climate.y, 1);
+                    int index = y * chunkWidth + x;
+
+                    float2 climate = TerrainNoise.Climate(x * stride, y * stride, climateSettings, chunkPosition, chunkWidth, seed);
+
 
                     float3 normal = new float3(0, 1, 0);
 
-                    voxel.height = (int)TerrainNoise.GetHeightAndNormalAtPoint(voxel.x, voxel.y, climate, biomes, stride, chunkPosition, chunkWidth, seed, out normal);
+                    float height = TerrainNoise.GetHeightAndNormalAtPoint(x, y, climate, biomes, stride, chunkPosition, chunkWidth, seed, out normal);
                     voxel.normal = normal;
 
-                    terrainColorBuffer[i] = TerrainNoise.GetColorAtPoint(biomes, climate);
-                    voxelBuffer[i] = voxel;
+                    voxel.position = new float3(x, height, y);
+
+                    if (x < chunkWidth && y < chunkWidth)
+                    {
+                        climateBuffer[index] = climate;
+                        climateColorBuffer[index] = new Color(climate.x, 0, climate.y, 1);
+                        terrainColorBuffer[index] = TerrainNoise.GetColorAtPoint(biomes, climate);
+                        voxelBuffer[index] = voxel;
+                    }
+                    else if (y >= chunkWidth) {
+                        topEdgeBuffer[x] = voxel;
+                    }
+                    else if (x == chunkWidth)
+                    {
+                        rightEdgeBuffer[y] = voxel;
+                    }
+
                 }
             }).Schedule(Dependency);
 
@@ -331,6 +366,8 @@ namespace VoxelTerrain.ECS.Systems
 
             Dependency = Job.
             WithReadOnly(voxelBuffer).WithDisposeOnCompletion(voxelBuffer).
+            WithReadOnly(topEdgeBuffer).WithDisposeOnCompletion(topEdgeBuffer).
+            WithReadOnly(rightEdgeBuffer).WithDisposeOnCompletion(rightEdgeBuffer).
             WithReadOnly(terrainColorBuffer).WithDisposeOnCompletion(terrainColorBuffer).
             WithReadOnly(climateColorBuffer).WithDisposeOnCompletion(climateColorBuffer).
             WithReadOnly(climateBuffer).WithDisposeOnCompletion(climateBuffer).
@@ -342,6 +379,12 @@ namespace VoxelTerrain.ECS.Systems
 
                 var dynamicVoxelBuffer = bufferEcb.SetBuffer<VoxelTerrainChunkVoxelBufferElement>(closestChunkEntity);
                 dynamicVoxelBuffer.AddRange(voxelBuffer);
+
+                var dynamicTopEdgeBuffer = bufferEcb.SetBuffer<VoxelTerrainChunkTopEdgeBufferElement>(closestChunkEntity);
+                dynamicTopEdgeBuffer.AddRange(topEdgeBuffer);
+
+                var dynamicRightEdgeBuffer = bufferEcb.SetBuffer<VoxelTerrainChunkRightEdgeBufferElement>(closestChunkEntity);
+                dynamicRightEdgeBuffer.AddRange(rightEdgeBuffer);
 
                 var dynamicColorBuffer = bufferEcb.SetBuffer<VoxelTerrainChunkTerrainColorBufferElement>(closestChunkEntity);
                 dynamicColorBuffer.AddRange(terrainColorBuffer);
@@ -409,11 +452,20 @@ namespace VoxelTerrain.ECS.Systems
 
         protected override void OnUpdate()
         {
-            if (ClosestVoxelTerrainChunkData.closestChunkEntity.Data == default) { return; }
+            if (ClosestVoxelTerrainChunkData.closestChunkEntity.Data == default) {
+
+                return;
+            }
+            else if (ClosestVoxelTerrainChunkData.closestChunkEntity.Data == null) {
+                Debug.LogWarning("Closest chunk is null. Skipping...");
+                return;
+            }
             var ecb = ecbSystem.CreateCommandBuffer();
 
             ComputeShader meshGenerator = TerrainChunkConversionManager.terrainGeneratorShader;
             NativeArray<VoxelTerrainChunkVoxelBufferElement> terrainVoxels = GetBuffer<VoxelTerrainChunkVoxelBufferElement>(ClosestVoxelTerrainChunkData.closestChunkEntity.Data).AsNativeArray();
+            NativeArray<VoxelTerrainChunkTopEdgeBufferElement> topEdgeVoxels = GetBuffer<VoxelTerrainChunkTopEdgeBufferElement>(ClosestVoxelTerrainChunkData.closestChunkEntity.Data).AsNativeArray();
+            NativeArray<VoxelTerrainChunkRightEdgeBufferElement> rightEdgeVoxels = GetBuffer<VoxelTerrainChunkRightEdgeBufferElement>(ClosestVoxelTerrainChunkData.closestChunkEntity.Data).AsNativeArray();
 
             if (terrainVoxels.Length == 0) { return; }
 
@@ -426,13 +478,19 @@ namespace VoxelTerrain.ECS.Systems
 
             int sizeVector3 = sizeof(float) * 3;
             int sizeVector2 = sizeof(float) * 2;
-            int sizeVoxel = (sizeof(int) * 3) + (sizeVector3);
+            int sizeVoxel = sizeVector3*2;
             int chunkWidth = TerrainManager.instance.terrainSettings.grid.chunkSize;
-            int vertCount = chunkWidth * TerrainManager.instance.terrainSettings.voxelVertecies;
-            int indexCount = chunkWidth * TerrainManager.instance.terrainSettings.voxelIdexies;
+            int vertCount = chunkWidth * chunkWidth * TerrainManager.instance.terrainSettings.voxelVertecies;
+            int indexCount = chunkWidth * chunkWidth * TerrainManager.instance.terrainSettings.voxelIdexies;
 
             ComputeBuffer voxels = new ComputeBuffer(terrainVoxels.Length, sizeVoxel);
             voxels.SetData(terrainVoxels);
+
+            ComputeBuffer topEdge = new ComputeBuffer(topEdgeVoxels.Length, sizeVoxel);
+            topEdge.SetData(topEdgeVoxels);
+
+            ComputeBuffer rightEdge = new ComputeBuffer(rightEdgeVoxels.Length, sizeVoxel);
+            rightEdge.SetData(rightEdgeVoxels);
 
             ComputeBuffer verts = new ComputeBuffer(vertCount, sizeVector3);
             ComputeBuffer tris = new ComputeBuffer(indexCount, sizeof(int));
@@ -441,9 +499,12 @@ namespace VoxelTerrain.ECS.Systems
             ComputeBuffer uv1 = new ComputeBuffer(vertCount, sizeVector2);
 
             meshGenerator.SetFloat("voxelSize", chunkComponent.grid.voxelSize);
-            meshGenerator.SetInt("chunkWidth", chunkWidth+1);
+            meshGenerator.SetInt("chunkWidth", chunkWidth);
 
             meshGenerator.SetBuffer(0, "voxels", voxels);
+            meshGenerator.SetBuffer(0, "topEdge", topEdge);
+            meshGenerator.SetBuffer(0, "rightEdge", rightEdge);
+
             meshGenerator.SetBuffer(0, "verts", verts);
             meshGenerator.SetBuffer(0, "tris", tris);
             meshGenerator.SetBuffer(0, "normals", normals);
@@ -451,7 +512,7 @@ namespace VoxelTerrain.ECS.Systems
             meshGenerator.SetBuffer(0, "uv1s", uv1);
 
             // Run computation
-            meshGenerator.Dispatch(0, chunkComponent.grid.chunkSize, chunkComponent.grid.chunkSize, 1);
+            meshGenerator.Dispatch(0, chunkWidth, chunkWidth, 1);
 
             AABB aabb = new AABB();
             aabb.Center = new float3((chunkComponent.grid.chunkSize * chunkComponent.grid.voxelSize) / 2, 500, (chunkComponent.grid.chunkSize * chunkComponent.grid.voxelSize) / 2);
@@ -459,13 +520,26 @@ namespace VoxelTerrain.ECS.Systems
 
             ecb.SetComponent(closestEntity, new RenderBounds { Value = aabb });
 
-            meshInstance.mesh = mesh;
+            ecb.AddComponent<VoxelTerrainChunkRenderTag>(closestEntity);
+            ecb.AddComponent<RenderInstanced>(closestEntity);
 
-            ecb.SetSharedComponent(closestEntity, meshInstance);
-            ecb.AddComponent<VoxelTerrainChunkInitializedTag>(closestEntity);
+            Texture2D climateTex = GetClimateColors();
+            Texture2D colorTex = GetBiomeColors();
+
+            Material mat = new Material(meshInstance.material);
+            mat.SetTexture("climate_texture", climateTex);
+            mat.SetTexture("color_texture", colorTex);
+
+            ecb.SetSharedComponent<RenderMesh>(ClosestVoxelTerrainChunkData.closestChunkEntity.Data, new RenderMesh
+            {
+                mesh = mesh,
+                material = mat
+            });
+
+            ecbSystem.AddJobHandleForProducer(Dependency);
 
             AsyncGPUReadback.Request(verts, (AsyncGPUReadbackRequest request) => {
-                var tagEcb = ecbSystem.CreateCommandBuffer();
+                //var tagEcb = ecbSystem.CreateCommandBuffer();
 
                 if (request.hasError) { Debug.LogError($"Could not get buffer data."); return; }
                 else if (!request.done) { Debug.Log("Not done yet..."); return; }
@@ -473,9 +547,8 @@ namespace VoxelTerrain.ECS.Systems
                 mesh.SetVertices(request.GetData<Vector3>());
                 verts.Dispose();
                 voxels.Dispose();
-
-                tagEcb.AddComponent<VoxelTerrainChunkRenderTag>(closestEntity);
-                tagEcb.AddComponent<RenderInstanced>(closestEntity);
+                topEdge.Dispose();
+                rightEdge.Dispose();                
 
                 AsyncGPUReadback.Request(tris, (AsyncGPUReadbackRequest request) =>
                 {
@@ -516,13 +589,7 @@ namespace VoxelTerrain.ECS.Systems
                 });
             });
 
-            Texture2D climateTex = GetClimateColors();
-            Texture2D colorTex = GetBiomeColors();
-
-            meshInstance.material.SetTexture("climate_texture", climateTex);
-            meshInstance.material.SetTexture("color_texture", colorTex);
-
-            ecbSystem.AddJobHandleForProducer(Dependency);
+            
         }
     }
 
