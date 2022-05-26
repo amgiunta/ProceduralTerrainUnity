@@ -15,7 +15,7 @@ namespace VoxelTerrain.ECS.Systems
     [UpdateInGroup(typeof(PresentationSystemGroup), OrderLast = true)]
     [UpdateAfter(typeof(GenerateVoxelTerrainMeshSystem))]
     [UpdateAfter(typeof(GroundScatterMoveSystem))]
-    public class RenderInstancedSystem : SystemBase
+    public partial class RenderInstancedSystem : SystemBase
     {
         protected World defaultWorld;
         protected EntityManager entityManager;

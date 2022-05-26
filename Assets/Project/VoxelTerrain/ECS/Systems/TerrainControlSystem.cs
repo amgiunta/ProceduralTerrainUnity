@@ -83,6 +83,7 @@ namespace VoxelTerrain.ECS.Components {
 
 namespace VoxelTerrain.ECS.Systems
 {
+    
     public abstract class ClosestVoxelTerrainChunkData
     {
         public static SharedStatic<Entity> closestChunkEntity = SharedStatic<Entity>.GetOrCreate<ClosestVoxelTerrainChunkData, VoxelTerrainChunkEntityKey>();
@@ -99,7 +100,7 @@ namespace VoxelTerrain.ECS.Systems
     }
 
     [UpdateInGroup(typeof(InitializationSystemGroup), OrderFirst = true, OrderLast = false)]
-    public class SpawnVoxelTerrainChunkSystem : SystemBase
+    public partial class SpawnVoxelTerrainChunkSystem : SystemBase
     {
         public NativeHashMap<int2, Entity> chunks;
 
@@ -203,7 +204,7 @@ namespace VoxelTerrain.ECS.Systems
     [AlwaysUpdateSystem]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     [UpdateAfter(typeof(SpawnVoxelTerrainChunkSystem))]
-    public class ClosestVoxelTerrainChunkFinderSystem : SystemBase
+    public partial class ClosestVoxelTerrainChunkFinderSystem : SystemBase
     {
         protected World defaultWorld;
         protected EntityManager entityManager;
@@ -254,7 +255,7 @@ namespace VoxelTerrain.ECS.Systems
 
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true, OrderLast = false)]
     [UpdateAfter(typeof(ClosestVoxelTerrainChunkFinderSystem))]
-    public class GenerateVoxelTerrainChunkSystem : SystemBase
+    public partial class GenerateVoxelTerrainChunkSystem : SystemBase
     {
         protected EndSimulationEntityCommandBufferSystem bufferSystem;
         protected BeginPresentationEntityCommandBufferSystem tagSystem;
@@ -407,7 +408,7 @@ namespace VoxelTerrain.ECS.Systems
 
     [UpdateInGroup(typeof(PresentationSystemGroup), OrderFirst = true, OrderLast = false)]
     [UpdateAfter(typeof(GenerateVoxelTerrainChunkSystem))]
-    public class GenerateVoxelTerrainMeshSystem : SystemBase
+    public partial class GenerateVoxelTerrainMeshSystem : SystemBase
     {
         protected BeginInitializationEntityCommandBufferSystem ecbSystem;
         protected World defaultWorld;
@@ -537,6 +538,7 @@ namespace VoxelTerrain.ECS.Systems
             });
 
             ecbSystem.AddJobHandleForProducer(Dependency);
+            
 
             AsyncGPUReadback.Request(verts, (AsyncGPUReadbackRequest request) => {
                 //var tagEcb = ecbSystem.CreateCommandBuffer();

@@ -8,7 +8,7 @@ using Unity.Transforms;
 using VoxelTerrain.ECS.Components;
 
 namespace VoxelTerrain.ECS.Systems {
-    public class FaceCameraSystem : SystemBase
+    public partial class FaceCameraSystem : SystemBase
     {
         Camera cam;
 
