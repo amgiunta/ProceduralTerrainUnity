@@ -24,6 +24,7 @@ namespace RTSCamera.Components {
         public float rotationSpeed;
         [Range(0f, 1f)] public float dampening = 1;
         [Range(0f, 10f)] public float sensetivity = 1;
+        [Range(0f, 10f)] public float zoomSensetivity = 1;
 
         public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
         {
@@ -41,7 +42,8 @@ namespace RTSCamera.Components {
                 movementSpeed = this.movementSpeed,
                 rotationSpeed = this.rotationSpeed,
                 dampening = this.dampening,
-                sensetivity = this.sensetivity
+                sensetivity = this.sensetivity,
+                zoomSensetivity = this.zoomSensetivity
             });
 
             dstManager.AddComponentData(entity, new RTSInputPointer());

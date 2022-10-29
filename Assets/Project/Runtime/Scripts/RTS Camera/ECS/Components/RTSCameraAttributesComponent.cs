@@ -13,5 +13,6 @@ namespace RTSCamera.Components
         public float rotationSpeed;
         public float dampening;
         public float sensetivity;
+        public float zoomSensetivity;
     }
 }

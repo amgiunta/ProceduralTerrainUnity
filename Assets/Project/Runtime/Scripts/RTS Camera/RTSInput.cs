@@ -30,15 +30,6 @@ namespace RTSCamera.Input
             ""id"": ""4ac2c8ce-745b-4800-942e-51a07001f783"",
             ""actions"": [
                 {
-                    ""name"": ""Translation"",
-                    ""type"": ""Value"",
-                    ""id"": ""498801ac-1654-46cb-80e0-3a941cf07347"",
-                    ""expectedControlType"": ""Vector2"",
-                    ""processors"": """",
-                    ""interactions"": """",
-                    ""initialStateCheck"": true
-                },
-                {
                     ""name"": ""Point"",
                     ""type"": ""Value"",
                     ""id"": ""82dda96d-5921-440f-b0c3-2d30eec99b4a"",
@@ -82,64 +73,18 @@ namespace RTSCamera.Input
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Zoom"",
+                    ""type"": ""Value"",
+                    ""id"": ""b0ce4180-ab3d-4387-8b12-5859745cb2cc"",
+                    ""expectedControlType"": ""Vector2"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": true
                 }
             ],
             ""bindings"": [
-                {
-                    ""name"": ""2D Vector"",
-                    ""id"": ""1231a1a9-1b44-4239-95a0-22e0fc77deec"",
-                    ""path"": ""2DVector"",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": """",
-                    ""action"": ""Translation"",
-                    ""isComposite"": true,
-                    ""isPartOfComposite"": false
-                },
-                {
-                    ""name"": ""up"",
-                    ""id"": ""b91d4e02-b585-4b05-ad24-0f29f2ce12f6"",
-                    ""path"": ""<Keyboard>/w"",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": """",
-                    ""action"": ""Translation"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": true
-                },
-                {
-                    ""name"": ""down"",
-                    ""id"": ""391679ca-8e16-4aa9-b2f4-8fecfc4314c0"",
-                    ""path"": ""<Keyboard>/s"",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": """",
-                    ""action"": ""Translation"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": true
-                },
-                {
-                    ""name"": ""left"",
-                    ""id"": ""3ddc46ec-4d94-4861-b205-3dca2cdfeb25"",
-                    ""path"": ""<Keyboard>/a"",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": """",
-                    ""action"": ""Translation"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": true
-                },
-                {
-                    ""name"": ""right"",
-                    ""id"": ""392b656e-6751-43fc-8a16-62d817ab1398"",
-                    ""path"": ""<Keyboard>/d"",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": """",
-                    ""action"": ""Translation"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": true
-                },
                 {
                     ""name"": """",
                     ""id"": ""beeefef1-abb1-44f1-87ad-5fc9566e5924"",
@@ -194,6 +139,17 @@ namespace RTSCamera.Input
                     ""action"": ""Select Terciary"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""efed9ff4-4fe7-4f47-b914-e82a12518b7f"",
+                    ""path"": ""<Mouse>/scroll"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Zoom"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -202,12 +158,12 @@ namespace RTSCamera.Input
 }");
             // Game
             m_Game = asset.FindActionMap("Game", throwIfNotFound: true);
-            m_Game_Translation = m_Game.FindAction("Translation", throwIfNotFound: true);
             m_Game_Point = m_Game.FindAction("Point", throwIfNotFound: true);
             m_Game_SelectSecondary = m_Game.FindAction("Select Secondary", throwIfNotFound: true);
             m_Game_SelectPrimary = m_Game.FindAction("Select Primary", throwIfNotFound: true);
             m_Game_Delta = m_Game.FindAction("Delta", throwIfNotFound: true);
             m_Game_SelectTerciary = m_Game.FindAction("Select Terciary", throwIfNotFound: true);
+            m_Game_Zoom = m_Game.FindAction("Zoom", throwIfNotFound: true);
         }
 
         public void Dispose()
@@ -267,22 +223,22 @@ namespace RTSCamera.Input
         // Game
         private readonly InputActionMap m_Game;
         private IGameActions m_GameActionsCallbackInterface;
-        private readonly InputAction m_Game_Translation;
         private readonly InputAction m_Game_Point;
         private readonly InputAction m_Game_SelectSecondary;
         private readonly InputAction m_Game_SelectPrimary;
         private readonly InputAction m_Game_Delta;
         private readonly InputAction m_Game_SelectTerciary;
+        private readonly InputAction m_Game_Zoom;
         public struct GameActions
         {
             private @RTSInput m_Wrapper;
             public GameActions(@RTSInput wrapper) { m_Wrapper = wrapper; }
-            public InputAction @Translation => m_Wrapper.m_Game_Translation;
             public InputAction @Point => m_Wrapper.m_Game_Point;
             public InputAction @SelectSecondary => m_Wrapper.m_Game_SelectSecondary;
             public InputAction @SelectPrimary => m_Wrapper.m_Game_SelectPrimary;
             public InputAction @Delta => m_Wrapper.m_Game_Delta;
             public InputAction @SelectTerciary => m_Wrapper.m_Game_SelectTerciary;
+            public InputAction @Zoom => m_Wrapper.m_Game_Zoom;
             public InputActionMap Get() { return m_Wrapper.m_Game; }
             public void Enable() { Get().Enable(); }
             public void Disable() { Get().Disable(); }
@@ -292,9 +248,6 @@ namespace RTSCamera.Input
             {
                 if (m_Wrapper.m_GameActionsCallbackInterface != null)
                 {
-                    @Translation.started -= m_Wrapper.m_GameActionsCallbackInterface.OnTranslation;
-                    @Translation.performed -= m_Wrapper.m_GameActionsCallbackInterface.OnTranslation;
-                    @Translation.canceled -= m_Wrapper.m_GameActionsCallbackInterface.OnTranslation;
                     @Point.started -= m_Wrapper.m_GameActionsCallbackInterface.OnPoint;
                     @Point.performed -= m_Wrapper.m_GameActionsCallbackInterface.OnPoint;
                     @Point.canceled -= m_Wrapper.m_GameActionsCallbackInterface.OnPoint;
@@ -310,13 +263,13 @@ namespace RTSCamera.Input
                     @SelectTerciary.started -= m_Wrapper.m_GameActionsCallbackInterface.OnSelectTerciary;
                     @SelectTerciary.performed -= m_Wrapper.m_GameActionsCallbackInterface.OnSelectTerciary;
                     @SelectTerciary.canceled -= m_Wrapper.m_GameActionsCallbackInterface.OnSelectTerciary;
+                    @Zoom.started -= m_Wrapper.m_GameActionsCallbackInterface.OnZoom;
+                    @Zoom.performed -= m_Wrapper.m_GameActionsCallbackInterface.OnZoom;
+                    @Zoom.canceled -= m_Wrapper.m_GameActionsCallbackInterface.OnZoom;
                 }
                 m_Wrapper.m_GameActionsCallbackInterface = instance;
                 if (instance != null)
                 {
-                    @Translation.started += instance.OnTranslation;
-                    @Translation.performed += instance.OnTranslation;
-                    @Translation.canceled += instance.OnTranslation;
                     @Point.started += instance.OnPoint;
                     @Point.performed += instance.OnPoint;
                     @Point.canceled += instance.OnPoint;
@@ -332,18 +285,21 @@ namespace RTSCamera.Input
                     @SelectTerciary.started += instance.OnSelectTerciary;
                     @SelectTerciary.performed += instance.OnSelectTerciary;
                     @SelectTerciary.canceled += instance.OnSelectTerciary;
+                    @Zoom.started += instance.OnZoom;
+                    @Zoom.performed += instance.OnZoom;
+                    @Zoom.canceled += instance.OnZoom;
                 }
             }
         }
         public GameActions @Game => new GameActions(this);
         public interface IGameActions
         {
-            void OnTranslation(InputAction.CallbackContext context);
             void OnPoint(InputAction.CallbackContext context);
             void OnSelectSecondary(InputAction.CallbackContext context);
             void OnSelectPrimary(InputAction.CallbackContext context);
             void OnDelta(InputAction.CallbackContext context);
             void OnSelectTerciary(InputAction.CallbackContext context);
+            void OnZoom(InputAction.CallbackContext context);
         }
     }
 }

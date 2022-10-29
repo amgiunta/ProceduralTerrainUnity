@@ -40,7 +40,7 @@ namespace RTSCamera.Systems
 
 
             NativeList<JobHandle> dependancies = new NativeList<JobHandle>(0, Allocator.Temp);
-            
+            /*
             float2 newTranslation = gameActions.Translation.ReadValue<Vector2>();
             var translationJob = Entities.
             WithBurst().
@@ -49,7 +49,7 @@ namespace RTSCamera.Systems
                 translation.value = newTranslation;
             }).ScheduleParallel(Dependency);
             dependancies.Add(translationJob);
-
+            */
 
             float2 newPointer = gameActions.Point.ReadValue<Vector2>();
             var pointerJob = Entities.
@@ -93,6 +93,15 @@ namespace RTSCamera.Systems
             }).ScheduleParallel(Dependency);
             dependancies.Add(terciaryJob);
 
+            float newZoom = gameActions.Zoom.ReadValue<Vector2>().y;
+            var zoomJob = Entities.
+            WithBurst().
+            ForEach((ref RTSInputZoom zoom) =>
+            {
+                zoom.value = newZoom;
+            }).ScheduleParallel(Dependency);
+            dependancies.Add(zoomJob);
+
             Dependency = JobHandle.CombineDependencies(dependancies);
             beginInitializationEntityCommandBufferSystem.AddJobHandleForProducer(Dependency);
         }
@@ -124,7 +133,8 @@ namespace RTSCamera.Systems
             Camera main = Camera.main;
 
             RTSInputSelectTerciary selectTerciary = entityManager.GetComponentData<RTSInputSelectTerciary>(camEntity);
-            if (selectTerciary.value)
+            RTSInputSelectSecondary selectSecondary = entityManager.GetComponentData<RTSInputSelectSecondary>(camEntity);
+            if (selectTerciary.value || selectSecondary.value)
             {
                 Cursor.lockState = CursorLockMode.Locked;
                 Cursor.visible = false;
@@ -134,43 +144,51 @@ namespace RTSCamera.Systems
                 Cursor.visible = true;
             }
 
-            /*
-            RTSInputPointer pointer = entityManager.GetComponentData<RTSInputPointer>(camEntity);
-            float2 pointerScreenPoint = pointer.value;
-            float3 pointerWorldPoint = new float3(main.ScreenToWorldPoint(new Vector3(pointerScreenPoint.x, pointerScreenPoint.y, main.nearClipPlane)));
-
-            float3 pointDirection = math.normalize(pointerWorldPoint - new float3(main.transform.position));
-
-            Debug.DrawRay(main.transform.position, pointDirection * 100, Color.red);
-            */
-
             RTSInputPointer pointer = entityManager.GetComponentData<RTSInputPointer>(camEntity);
             RTSInputDelta delta = entityManager.GetComponentData<RTSInputDelta>(camEntity);
-            float3 deltaWorldPoint = main.ScreenToWorldPoint(new Vector3(delta.value.x + (main.pixelWidth / 2), delta.value.y + (main.pixelHeight / 2), main.nearClipPlane));
-
-            Debug.Log($"Delta world: {deltaWorldPoint}");
-
-            Debug.DrawLine(main.transform.position, deltaWorldPoint, Color.red);
+            float2 deltaValue = new float2(
+                (delta.value.x / main.pixelWidth),
+                (delta.value.y / main.pixelHeight)
+            );
+            float3 forward = main.transform.forward;
+            float3 pointerWorldPoint = main.ScreenToWorldPoint(new float3(pointer.value.x, pointer.value.y, main.nearClipPlane));
+            float3 pointerDirection = math.normalize(pointerWorldPoint - new float3(main.transform.position));
+            float3 projectedForward = new float3(
+                main.transform.forward.x,
+                0,
+                main.transform.forward.z
+            );
+            float3 euler = main.transform.rotation.eulerAngles;
 
             Entities.
             WithBurst().
             ForEach((
                 ref Rotation rotation, ref Translation translation, in LocalToWorld ltw, in RTSCameraAttributesComponent attributes,
-                in RTSInputPointer rTSInputPointer, in RTSInputTranslation rTSInputTranslation,
-                in RTSInputSelectSecondary secondary, in RTSInputSelectTerciary terciary
+                in RTSInputTranslation rTSInputTranslation,
+                in RTSInputSelectSecondary secondary, in RTSInputSelectTerciary terciary, in RTSInputZoom zoom
             ) => {
-                if (terciary.value) {
-                    float3 movement = - new float3(
-                        translation.Value.x - deltaWorldPoint.x,
+                if (terciary.value)
+                {
+                    quaternion proj = quaternion.LookRotation(projectedForward, new float3(0, 1, 0));
+                    float3 movement = new float3(
+                        deltaValue.x,
                         0,
-                        translation.Value.z - deltaWorldPoint.z
+                        deltaValue.y
                     );
 
-                    //translation.Value = translation.Value - movement * attributes.movementSpeed * attributes.dampening;
-                    translation.Value = math.lerp(translation.Value, translation.Value - movement, deltaTime * attributes.movementSpeed * attributes.dampening);
-                }              
+                    translation.Value = translation.Value - (math.mul(proj, movement * 2)) * (translation.Value.y / 10);
+                }
+                else if (secondary.value) {
+                    float xAngle = math.radians(math.clamp(euler.x + deltaValue.y * -15, 0, 89));
+                    float yAngle = math.radians(euler.y + deltaValue.x * 15);
+                    rotation.Value = quaternion.EulerXYZ(xAngle, yAngle, 0);
 
 
+                }
+
+                float targetHeight = translation.Value.y - zoom.value;
+
+                translation.Value = math.lerp(translation.Value, new float3(translation.Value.x, targetHeight, translation.Value.z), attributes.zoomSensetivity * deltaTime * attributes.dampening);
             }).ScheduleParallel();
 
             beginSimulationEntityCommandBufferSystem.AddJobHandleForProducer(Dependency);
