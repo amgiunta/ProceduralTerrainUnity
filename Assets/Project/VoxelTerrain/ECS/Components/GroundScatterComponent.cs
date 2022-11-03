@@ -19,5 +19,6 @@ namespace VoxelTerrain.ECS.Components
         public float3 offset;
         [Range(0, 1)] public float jitterFactor;
         public ChunkComponent chunk;
+        public Entity ChunkEntity;
     }
 }

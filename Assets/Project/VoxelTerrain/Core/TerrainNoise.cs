@@ -7,6 +7,8 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Burst;
 
+using UnityEngine.Profiling;
+
 namespace VoxelTerrain
 {
     public class MapPreview {
@@ -383,9 +385,10 @@ namespace VoxelTerrain
             float frequency = 1;
             float noiseHeight = 0;
 
+            
             for (int i = 0; i < octaves; i++)
             {
-                float2 octOffset = (offset + random.NextFloat2());
+                float2 octOffset = offset + random.NextFloat2();
                 float2 sample = new float2(
                     (x * stride + octOffset.x) / scale.x * frequency,
                     (y * stride + octOffset.y) / scale.y * frequency
@@ -397,7 +400,7 @@ namespace VoxelTerrain
                 amplitude *= persistance;
                 frequency *= lancunarity;
             }
-
+            
             return math.remap(-1f, 1f, 0f, 1f, noiseHeight);
         }
 
@@ -441,6 +444,7 @@ namespace VoxelTerrain
             return math.remap(-1f, 1f, 0f, 1f, noiseHeight);
         }
 
+        /*
         [System.Obsolete("Not Necessary")]
         public static float Noise(float x, float y, float persistance, float lancunarity, int stride = 1, float2 offset = default, float2 scale = default, int octaves = 1)
         {
@@ -474,6 +478,7 @@ namespace VoxelTerrain
 
             return math.remap(-1, 1, 0, 1, noiseHeight);
         }
+        */
         
         public static float GetHeightAtPoint(float x, float y, float2 climate, IEnumerable biomes, int stride, float2 chunkPosition, int chunkWidth, int seed) {
             float totalHeight = 0;
