@@ -24,15 +24,6 @@ namespace VoxelTerrain
                 {
                     using (BlobAssetStore assetStore = new BlobAssetStore())
                     {
-                        /*
-                        if (prefab)
-                        {
-                            //TerrainChunkConversionManager.chunkPrefab = GameObjectConversionUtility.ConvertGameObjectHierarchy(gameObject, GameObjectConversionSettings.FromWorld(dstManager.World, assetStore)); ;
-                            TerrainChunkConversionManager.renderMesh = new RenderMesh { material = this.GetComponent<MeshRenderer>().sharedMaterial };
-                            dstManager.AddComponent<Prefab>(entity);
-                        }
-                        */
-
                         dstManager.AddComponentData(entity, new ChunkComponent
                         {
                             grid = this.grid,

@@ -28,7 +28,7 @@ public class ClimateDebug : MonoBehaviour
 
         float2 climate = TerrainNoise.Climate(localPosition.x, localPosition.y, 
             TerrainManager.instance.terrainSettings, player.gridPosition, 
-            TerrainManager.instance.terrainSettings.grid.chunkSize, TerrainManager.instance.terrainSettings.seed
+            TerrainManager.instance.terrainSettings.grid.chunkSize, TerrainManager.instance.terrainSettings.grid.voxelSize, TerrainManager.instance.terrainSettings.seed
         );
 
         tempText.text = climate.x.ToString();

@@ -11,6 +11,7 @@ using UnityEngine.Profiling;
 
 namespace VoxelTerrain
 {
+    /*
     public class MapPreview {
         public enum MapLense { Height, Climate, Color, ColoredHeight };
 
@@ -107,6 +108,7 @@ namespace VoxelTerrain
                 {
                     case MapLense.Height:
                         heightMap = new NativeArray<float>(new float[bufferLength], Allocator.TempJob);
+                        
                         HeightMapJob firstJob = new HeightMapJob
                         {
                             biomes = new NativeArray<Biome>(biomes, Allocator.Persistent),
@@ -117,6 +119,7 @@ namespace VoxelTerrain
                             chunkWidth = chunkWidth,
                             seed = settings.seed
                         };
+                        
                         heightMapHandle = firstJob.Schedule(bufferLength, chunkWidth);
 
                         if (!mapLenses.ContainsKey(MapLense.Height)) {
@@ -261,6 +264,7 @@ namespace VoxelTerrain
             running = false;
         }
 
+        /*
         [BurstCompile(Debug = true)]
         public struct HeightMapJob : IJobParallelFor {
             [ReadOnly] public NativeArray<Biome> biomes;
@@ -277,9 +281,10 @@ namespace VoxelTerrain
                 int x = id % (textureSize.x * chunkWidth);
                 float2 climate = TerrainNoise.Climate(x, y, climateSettings, chunkPosition, chunkWidth, seed);
 
-                heights[y * (textureSize.x * chunkWidth) + x] = TerrainNoise.GetHeightAndNormalAtPoint(x, y, climate, biomes, 8, chunkPosition, chunkWidth, seed, out _);
+                heights[y * (textureSize.x * chunkWidth) + x] = TerrainNoise.GetHeightAndNormalAtPoint(x, y, climate, biomes, chunkPosition, chunkWidth, seed, out _);
             }
         }
+        
 
         [BurstCompile(Debug = true)]
         public struct HeightTextureJob : IJobParallelFor
@@ -364,10 +369,11 @@ namespace VoxelTerrain
             }
         }
     }
+    */
 
     public static class TerrainNoise
     {
-        public static float Noise(float x, float y, float persistance, float lancunarity, int stride = 1, float2 offset = default, float2 scale = default, int octaves = 1, int seed = 0)
+        public static float Noise(float x, float y, float persistance, float lancunarity, float2 offset = default, float2 scale = default, int octaves = 1, int seed = 0)
         {
             if (seed == 0) { seed = 1; }
             Unity.Mathematics.Random random = new Unity.Mathematics.Random((uint) seed);
@@ -390,8 +396,8 @@ namespace VoxelTerrain
             {
                 float2 octOffset = offset + random.NextFloat2();
                 float2 sample = new float2(
-                    (x * stride + octOffset.x) / scale.x * frequency,
-                    (y * stride + octOffset.y) / scale.y * frequency
+                    (x + octOffset.x) / scale.x * frequency,
+                    (y + octOffset.y) / scale.y * frequency
                 );
 
                 float perlinValue = noise.snoise(sample);
@@ -404,7 +410,7 @@ namespace VoxelTerrain
             return math.remap(-1f, 1f, 0f, 1f, noiseHeight);
         }
 
-        public static float Noise(float x, float y, float persistance, float lancunarity, out float dx, out float dy, int stride = 1, float2 offset = default, float2 scale = default, int octaves = 1, int seed = 0, float rotationDegrees = 0)
+        public static float Noise(float x, float y, float persistance, float lancunarity, out float dx, out float dy, float2 offset = default, float2 scale = default, int octaves = 1, int seed = 0, float rotationDegrees = 0)
         {
             if (seed == 0) { seed = 1; }
             Unity.Mathematics.Random random = new Unity.Mathematics.Random((uint)seed);
@@ -427,10 +433,14 @@ namespace VoxelTerrain
             for (int i = 0; i < octaves; i++)
             {
                 float2 octOffset = (offset + random.NextFloat2());
+                /*
                 float2 sample = new float2(
                     (x * stride + octOffset.x) / scale.x * frequency,
                     (y * stride + octOffset.y) / scale.y * frequency
                 );
+                */
+
+                float2 sample = (new float2(x, y) + octOffset) / (scale) * frequency;
 
                 float3 perlinValue = noise.srdnoise(sample, rotationDegrees);
                 noiseHeight += perlinValue.x * amplitude;
@@ -444,48 +454,12 @@ namespace VoxelTerrain
             return math.remap(-1f, 1f, 0f, 1f, noiseHeight);
         }
 
-        /*
-        [System.Obsolete("Not Necessary")]
-        public static float Noise(float x, float y, float persistance, float lancunarity, int stride = 1, float2 offset = default, float2 scale = default, int octaves = 1)
-        {
-            if (scale.x == 0)
-            {
-                scale.x = 0.00001f;
-            }
-            else if (scale.y == 0)
-            {
-                scale.y = 0.00001f;
-            }
-
-            float amplitude = 1;
-            float frequency = 1;
-            float noiseHeight = 0;
-
-            for (int i = 0; i < octaves; i++)
-            {
-                float2 octOffset = offset;
-                float2 sample = new float2(
-                    (x * stride + octOffset.x) / scale.x * frequency,
-                    (y * stride + octOffset.y) / scale.y * frequency
-                );
-
-                float perlinValue = noise.cnoise(sample);
-                noiseHeight += perlinValue * amplitude;
-
-                amplitude *= persistance;
-                frequency *= lancunarity;
-            }
-
-            return math.remap(-1, 1, 0, 1, noiseHeight);
-        }
-        */
-        
-        public static float GetHeightAtPoint(float x, float y, float2 climate, IEnumerable biomes, int stride, float2 chunkPosition, int chunkWidth, int seed) {
+        public static float GetHeightAtPoint(float x, float y, float2 climate, IEnumerable biomes, float2 chunkPosition, int chunkWidth, float voxelSize, int seed) {
             float totalHeight = 0;
             float totalWeight = 0;
             foreach (Biome biome in biomes)
             {
-                float noise = biome.GetNoiseAtPoint(x, y, stride, chunkPosition * chunkWidth, seed);
+                float noise = biome.GetNoiseAtPoint(x, y, chunkPosition * chunkWidth * voxelSize, seed);
                 float height = math.remap(0, 1, biome.minTerrainHeight, biome.maxTerrainHeight, noise);
                 float weight = biome.Idealness(climate.x, climate.y);
 
@@ -496,7 +470,7 @@ namespace VoxelTerrain
             return totalHeight / totalWeight;
         }
 
-        public static float GetHeightAtPoint(float x, float y, float2 climate, NativeArray<Biome> biomes, int stride, float2 chunkPosition, int chunkWidth, int seed)
+        public static float GetHeightAtPoint(float x, float y, float2 climate, NativeArray<Biome> biomes, float2 chunkPosition, int chunkWidth, int seed)
         {
             float totalHeight = 0;
             float totalWeight = 0;
@@ -505,7 +479,7 @@ namespace VoxelTerrain
             {
                 Biome biome = biomes[i];
 
-                float noise = biome.GetNoiseAtPoint(x, y, stride, chunkPosition * chunkWidth, seed);
+                float noise = biome.GetNoiseAtPoint(x, y, chunkPosition * chunkWidth, seed);
                 float height = math.remap(0, 1, biome.minTerrainHeight, biome.maxTerrainHeight, noise);
                 float weight = biome.Idealness(climate.x, climate.y);
 
@@ -516,7 +490,7 @@ namespace VoxelTerrain
             return totalHeight / totalWeight;
         }
 
-        public static float GetHeightAndNormalAtPoint(float x, float y, float2 climate, NativeArray<Biome> biomes, int stride, float2 chunkPosition, int chunkWidth, int seed, out float3 normal)
+        public static float GetHeightAndNormalAtPoint(float x, float y, float2 climate, NativeArray<Biome> biomes, float2 chunkPosition, int chunkWidth, float voxelSize, int seed, out float3 normal)
         {   
             float totalHeight = 0;
             float totalDx = 0;
@@ -527,7 +501,7 @@ namespace VoxelTerrain
             {
                 Biome biome = biomes[i];
 
-                float3 noise = biome.GetNoiseAndDerivativeAtPoint(x, y, stride, chunkPosition * chunkWidth, seed);
+                float3 noise = biome.GetNoiseAndDerivativeAtPoint(x, y, chunkPosition, chunkWidth, voxelSize, seed);
                 float height = math.remap(0, 1, biome.minTerrainHeight, biome.maxTerrainHeight, noise.x);
                 float dx = noise.y;
                 float dy = noise.z;
@@ -544,7 +518,7 @@ namespace VoxelTerrain
             return totalHeight / totalWeight;
         }
 
-        public static float GetHeightAtPoint(float x, float y, float2 climate, NativeArray<Biome>.ReadOnly biomes, int stride, float2 chunkPosition, int chunkWidth, int seed)
+        public static float GetHeightAtPoint(float x, float y, float2 climate, NativeArray<Biome>.ReadOnly biomes, float2 chunkPosition, int chunkWidth, int seed)
         {
             float totalHeight = 0;
             float totalWeight = 0;
@@ -552,7 +526,7 @@ namespace VoxelTerrain
             for (int i = 0; i < biomes.Length; i++) {
                 Biome biome = biomes[i];
 
-                float noise = biome.GetNoiseAtPoint(x, y, stride, chunkPosition * chunkWidth, seed);
+                float noise = biome.GetNoiseAtPoint(x, y, chunkPosition * chunkWidth, seed);
                 float height = math.remap(0, 1, biome.minTerrainHeight, biome.maxTerrainHeight, noise);
                 float weight = biome.Idealness(climate.x, climate.y);
 
@@ -579,28 +553,28 @@ namespace VoxelTerrain
             return totalColor / totalWeight;
         }
 
-        public static void CreateNoiseMap(int chunkWidth, TerrainSettings terrainSettings, Biome biome, ref float[] noiseMap, int startIndex = 0, int stride = 1, float2 offset = default)
+        public static void CreateNoiseMap(int chunkWidth, TerrainSettings terrainSettings, Biome biome, ref float[] noiseMap, int startIndex = 0, float2 offset = default)
         {
             for (int y = 0; y < chunkWidth; y++)
             {
                 for (int x = 0; x < chunkWidth; x++)
                 {
-                    noiseMap[(y * chunkWidth + x) + startIndex] = Noise(x, y, biome.persistance, biome.lancunarity, out _ , out _ ,stride, offset, biome.generatorNoiseScale, biome.octaves, terrainSettings.seed, biome.noiseRotation);
+                    noiseMap[(y * chunkWidth + x) + startIndex] = Noise(x, y, biome.persistance, biome.lancunarity, out _ , out _ , offset, biome.generatorNoiseScale, biome.octaves, terrainSettings.seed, biome.noiseRotation);
                 }
             }
         }
-        public static void CreateNoiseMap(int chunkWidth, Biome biome, int seed, ref float[] noiseMap, int startIndex = 0, int stride = 1, float2 offset = default)
+        public static void CreateNoiseMap(int chunkWidth, Biome biome, int seed, ref float[] noiseMap, int startIndex = 0, float2 offset = default)
         {
             for (int y = 0; y < chunkWidth; y++)
             {
                 for (int x = 0; x < chunkWidth; x++)
                 {
-                    noiseMap[(y * chunkWidth + x) + startIndex] = Noise(x, y, biome.persistance, biome.lancunarity, stride, offset, biome.generatorNoiseScale, biome.octaves, seed);
+                    noiseMap[(y * chunkWidth + x) + startIndex] = Noise(x, y, biome.persistance, biome.lancunarity, offset, biome.generatorNoiseScale, biome.octaves, seed);
                 }
             }
         }
 
-        public static void CreateNoiseMap(float2 chunkPosition, int chunkWidth, ref float[] noiseMap, int startIndex, TerrainSettings settings, IEnumerable biomes)
+        public static void CreateNoiseMap(float2 chunkPosition, int chunkWidth, float voxelSize, ref float[] noiseMap, int startIndex, TerrainSettings settings, IEnumerable biomes)
         {
             for (int y = 0; y < chunkWidth; y++)
             {
@@ -608,10 +582,10 @@ namespace VoxelTerrain
                 {
                     float totalNoise = 0;
                     float totalWeight = 0;
-                    float2 climate = Climate(x, y, settings, chunkPosition, chunkWidth, settings.seed);
+                    float2 climate = Climate(x, y, settings, chunkPosition, chunkWidth, voxelSize, settings.seed);
                     foreach (Biome biome in biomes)
                     {
-                        float noise = biome.GetNoiseAtPoint(x, y, 1, chunkPosition * chunkWidth, settings.seed);
+                        float noise = biome.GetNoiseAtPoint(x, y, chunkPosition * chunkWidth, settings.seed);
                         float weight = biome.Idealness(climate.x, climate.y);
 
                         totalNoise += noise * weight;
@@ -623,26 +597,26 @@ namespace VoxelTerrain
             }
         }
 
-        public static void CreateHeightMap(float2 chunkPosition, int chunkWidth, ref float[] heightMap, int startIndex, TerrainSettings settings, Biome[] biomes)
+        public static void CreateHeightMap(float2 chunkPosition, int chunkWidth, float voxelSize, ref float[] heightMap, int startIndex, TerrainSettings settings, Biome[] biomes)
         {
             for (int y = 0; y < chunkWidth; y++)
             {
                 for (int x = 0; x < chunkWidth; x++)
                 {
-                    float2 climate = Climate(x, y, settings, chunkPosition, chunkWidth, settings.seed);
+                    float2 climate = Climate(x, y, settings, chunkPosition, chunkWidth, voxelSize, settings.seed);
 
-                    float height = GetHeightAtPoint(x, y, climate, biomes, 1, chunkPosition, chunkWidth, settings.seed);
+                    float height = GetHeightAtPoint(x, y, climate, biomes, chunkPosition, chunkWidth, voxelSize, settings.seed);
 
                     heightMap[startIndex + (y * chunkWidth + x)] = height;
                 }
             }
         }
 
-        public static float2 Climate(float x, float y, ClimateSettings climateSettings, float2 gridPosition, int chunkWidth, int seed) {
-            float temperature = Noise(x, y, climateSettings.temperaturePersistance, climateSettings.temperatureLancunarity, 1, (climateSettings.temperatureOffset + gridPosition) * chunkWidth, climateSettings.temperatureScale, climateSettings.temperatureOctaves, seed);
+        public static float2 Climate(float x, float y, ClimateSettings climateSettings, float2 gridPosition, int chunkWidth, float voxelSize, int seed) {
+            float temperature = Noise(x, y, climateSettings.temperaturePersistance, climateSettings.temperatureLancunarity, gridPosition * chunkWidth, climateSettings.temperatureScale / voxelSize, climateSettings.temperatureOctaves, seed);
             temperature = math.clamp(math.unlerp(climateSettings.minTemperature, climateSettings.maxTemperature, temperature), 0, 1);
 
-            float moisture = Noise(x, y, climateSettings.moisturePersistance, climateSettings.moistureLancunarity, 1, (climateSettings.moistureOffset + gridPosition) * chunkWidth, climateSettings.moistureScale, climateSettings.moistureOctaves, seed);
+            float moisture = Noise(x, y, climateSettings.moisturePersistance, climateSettings.moistureLancunarity, gridPosition * chunkWidth, climateSettings.moistureScale / voxelSize, climateSettings.moistureOctaves, seed);
             moisture = math.clamp(math.unlerp(climateSettings.minMoisture, climateSettings.maxMoisture, moisture), 0, 1);
 
             return new float2(temperature, moisture);
@@ -671,26 +645,26 @@ namespace VoxelTerrain
             return Idealness(minClimate.x, maxClimate.x, climate.x, heartiness) * Idealness(minClimate.y, maxClimate.y, climate.y, heartiness);
         }
 
-        public static void CreateClimateMap(int chunkWidth, ref float2[] climateMap, int startIndex, TerrainSettings settings, float2 gridPosition = default)
+        public static void CreateClimateMap(int chunkWidth, float voxelSize, ref float2[] climateMap, int startIndex, TerrainSettings settings, float2 gridPosition = default)
         {
             for (int y = 0; y < chunkWidth; y++)
             {
                 for (int x = 0; x < chunkWidth; x++)
                 {
 
-                    climateMap[(y * chunkWidth + x) + startIndex] = Climate(x, y, settings, gridPosition, chunkWidth, settings.seed);
+                    climateMap[(y * chunkWidth + x) + startIndex] = Climate(x, y, settings, gridPosition, chunkWidth, voxelSize, settings.seed);
                 }
             }
         }
 
-        public static void CreateColorMap(float2 chunkPosition, int chunkWidth, ref Color[] colorMap, int startIndex, TerrainSettings settings, Biome[] biomes) {
+        public static void CreateColorMap(float2 chunkPosition, int chunkWidth, float voxelSize, ref Color[] colorMap, int startIndex, TerrainSettings settings, Biome[] biomes) {
             for (int y = 0; y < chunkWidth; y++)
             {
                 for (int x = 0; x < chunkWidth; x++)
                 {
                     Color totalColor = Color.black;
                     float totalWeight = 0;
-                    float2 climate = Climate(x, y, settings, chunkPosition, chunkWidth, settings.seed);
+                    float2 climate = Climate(x, y, settings, chunkPosition, chunkWidth, voxelSize, settings.seed);
                     
                     foreach (Biome biome in biomes)
                     {

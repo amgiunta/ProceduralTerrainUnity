@@ -115,13 +115,14 @@ namespace VoxelTerrain
 
             if (EditorGUI.EndChangeCheck()) {
                 float2[] climateMap = new float2[previewChunkSize * previewChunkSize];
+                /*
                 TerrainNoise.CreateClimateMap(
                     previewChunkSize,
                     ref climateMap,
                     0,
                     (TerrainSettings)target
                 );
-
+                */
                 previewTexture = TerrainNoise.CreateClimateTexture(climateMap, previewChunkSize);
             }
 

@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-7385666318658456670
+--- !u!114 &-3034422761876825365
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}
@@ -20,12 +20,12 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: URP Terrain
-  m_Shader: {fileID: -6465566751694194690, guid: 2f769f30842d6214db3dbb134159c73c,
+  m_Name: Debug Climate
+  m_Shader: {fileID: -6465566751694194690, guid: e6dc2c42e25c73945a91ae5b9c4da7a6,
     type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
+  m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
   stringTagMap: {}
@@ -33,38 +33,6 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
-    - Texture2D_40994b3620754b15984a049172a321ce:
-        m_Texture: {fileID: 2800000, guid: 5a0176647d062b24b8603f59ea0908e3, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - Texture2D_9d6b833f3e634a53bc9dc17ec8e6c941:
-        m_Texture: {fileID: 2800000, guid: f3aff223b4e22bc4488b94396d1ee3c4, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - Texture2D_9f12804ec5cf459daf494907cca4d9f8:
-        m_Texture: {fileID: 2800000, guid: f34829d5f462f014d863ea7280615aa0, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - Texture2D_aacfac830a9b4e6c8dfd20c22ce108c3:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - Texture2D_add67b2f00fe4444bdc32280cd66ada0:
-        m_Texture: {fileID: 2800000, guid: 28c72880da56c9448997f421aab93bdd, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - Texture2D_b319e614a1a3414f9aa111779961234f:
-        m_Texture: {fileID: 2800000, guid: 8f71337311a309742b14b4e838390548, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - Texture2D_d22b9bed95ec4e95bd2970e8304f8e6d:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - Texture2D_fb3fc9a512844d1dbe32391837e0ccd0:
-        m_Texture: {fileID: 2800000, guid: 7faa6d3228266044681c321d5d668f78, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
     - _BaseMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -110,11 +78,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - climate_texture:
-        m_Texture: {fileID: 2800000, guid: f34829d5f462f014d863ea7280615aa0, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - color_texture:
-        m_Texture: {fileID: 2800000, guid: 1c41fb1b33305b54d8d9bb66af96bb9f, type: 3}
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - unity_Lightmaps:
@@ -130,9 +94,6 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Floats:
-    - Vector1_1474145bbecb43e9a2eb38931b888483: 0.277
-    - Vector1_2871208cd5584a89becee389ff10302f: 100
-    - Vector1_fdde7366bc8e4504817cf4d3db4c776c: 0.19
     - _AlphaClip: 0
     - _Blend: 0
     - _BumpScale: 1
@@ -160,10 +121,6 @@ Material:
     - _WorkflowMode: 1
     - _ZWrite: 1
     m_Colors:
-    - Color_7b5df142296b42709eea3b718c8acda2: {r: 0.47648853, g: 0.8301887, b: 0.1461967,
-        a: 0}
-    - Vector2_27c5400426424c0fb037a736d04649b5: {r: 0, g: 0, b: 0, a: 0}
-    - Vector2_f12efd85fc154a689a1fac9dd31a45d5: {r: 0.3, g: 1, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}

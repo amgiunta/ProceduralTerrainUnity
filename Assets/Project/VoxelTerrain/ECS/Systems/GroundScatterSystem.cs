@@ -224,8 +224,8 @@ namespace VoxelTerrain.ECS.Systems {
 
                 int stride = (int)groundScatter.chunk.lodLevel;
 
-                float2 climate = TerrainNoise.Climate(x * stride, z * stride, climateSettings, groundScatter.chunk.gridPosition, groundScatter.chunk.grid.chunkSize, seed);
-                float height = TerrainNoise.GetHeightAtPoint(x, z, climate, biomes, stride, groundScatter.chunk.gridPosition, groundScatter.chunk.grid.chunkSize, seed );
+                float2 climate = TerrainNoise.Climate(x, z, climateSettings, groundScatter.chunk.gridPosition, groundScatter.chunk.grid.chunkSize, groundScatter.chunk.grid.voxelSize, seed);
+                float height = TerrainNoise.GetHeightAtPoint(x, z, climate, biomes, groundScatter.chunk.gridPosition, groundScatter.chunk.grid.chunkSize, groundScatter.chunk.grid.voxelSize, seed );
 
                 float climateIdealness = TerrainNoise.ClimateIdealness(new float2(groundScatter.minTemperature, groundScatter.minMoisture), new float2(groundScatter.maxTemperature, groundScatter.maxMoisture), climate, groundScatter.heartiness);
 

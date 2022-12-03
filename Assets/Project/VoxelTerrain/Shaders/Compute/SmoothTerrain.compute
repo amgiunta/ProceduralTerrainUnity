@@ -131,7 +131,7 @@ void SetDataForVoxel(uint3 id)
             position.z / chunkWidth
         );
         
-        verts[index + i] = position * voxelSize;
+        verts[index + i] = position * float3(voxelSize, 1, voxelSize);
         normals[index + i] = normal;
         uv0s[index + i] = uv0;
         uv1s[index + i] = uv1;

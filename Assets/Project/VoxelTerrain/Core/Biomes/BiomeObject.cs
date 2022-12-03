@@ -120,12 +120,11 @@ namespace VoxelTerrain
             return tempIdealness * moisIdealness;
         }
 
-        public float GetNoiseAtPoint(float x, float y, int stride, float2 offset, int seed) {
+        public float GetNoiseAtPoint(float x, float y, float2 offset, int seed) {
             return TerrainNoise.Noise(
                 x, y, 
                 persistance,
                 lancunarity,
-                stride,
                 offset,
                 generatorNoiseScale,
                 octaves,
@@ -133,7 +132,7 @@ namespace VoxelTerrain
             );
         }
 
-        public float3 GetNoiseAndDerivativeAtPoint(float x, float y, int stride, float2 offset, int seed)
+        public float3 GetNoiseAndDerivativeAtPoint(float x, float y, float2 offset, float chunkSize, float voxelSize, int seed)
         {
             float dx;
             float dy;
@@ -143,9 +142,8 @@ namespace VoxelTerrain
                 persistance,
                 lancunarity,
                 out dx, out dy,
-                stride,
-                offset,
-                generatorNoiseScale,
+                offset * chunkSize,
+                generatorNoiseScale / voxelSize,
                 octaves,
                 seed,
                 noiseRotation
