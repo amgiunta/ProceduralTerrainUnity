@@ -203,7 +203,8 @@ namespace VoxelTerrain.ECS.Systems {
             float renderDistance = TerrainManager.instance.terrainSettings.renderDistance;
 
             Entities.
-            WithReadOnly(biomes).
+            //WithReadOnly(biomes).
+            //WithDisposeOnCompletion(biomes).
             WithAll<VoxelTerrainGroundScatterNewTag>().
             WithNone<VoxelTerrainGroundScatterInitializedTag>().
             WithBurst().
@@ -224,14 +225,14 @@ namespace VoxelTerrain.ECS.Systems {
 
                 int stride = (int)groundScatter.chunk.lodLevel;
 
-                float2 climate = TerrainNoise.Climate(x, z, climateSettings, groundScatter.chunk.gridPosition, groundScatter.chunk.grid.chunkSize, groundScatter.chunk.grid.voxelSize, seed);
-                float height = TerrainNoise.GetHeightAtPoint(x, z, climate, biomes, groundScatter.chunk.gridPosition, groundScatter.chunk.grid.chunkSize, groundScatter.chunk.grid.voxelSize, seed );
+                //float2 climate = TerrainNoise.Climate(x, z, climateSettings, groundScatter.chunk.gridPosition, groundScatter.chunk.grid.chunkSize, groundScatter.chunk.grid.voxelSize, seed);
+                //float height = TerrainNoise.GetHeightAtPoint(x, z, climate, biomes, groundScatter.chunk.gridPosition, groundScatter.chunk.grid.chunkSize, groundScatter.chunk.grid.voxelSize, seed );
 
-                float climateIdealness = TerrainNoise.ClimateIdealness(new float2(groundScatter.minTemperature, groundScatter.minMoisture), new float2(groundScatter.maxTemperature, groundScatter.maxMoisture), climate, groundScatter.heartiness);
+                //float climateIdealness = TerrainNoise.ClimateIdealness(new float2(groundScatter.minTemperature, groundScatter.minMoisture), new float2(groundScatter.maxTemperature, groundScatter.maxMoisture), climate, groundScatter.heartiness);
 
                 rng = new Unity.Mathematics.Random(rng.NextUInt(1, uint.MaxValue));
                 float random = rng.NextFloat(0, 1);
-
+                /*
                 if (random > climateIdealness)
                 {
                     return;
@@ -267,6 +268,7 @@ namespace VoxelTerrain.ECS.Systems {
                 rotation.Value = rot;
 
                 biomes.Dispose();
+                */
 
                 pecb.RemoveComponent<DisableRendering>(entityInQueryIndex, e);
                 pecb.AddComponent<VoxelTerrainGroundScatterInitializedTag>(entityInQueryIndex, e);

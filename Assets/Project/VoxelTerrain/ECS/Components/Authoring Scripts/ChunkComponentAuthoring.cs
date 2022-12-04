@@ -32,6 +32,7 @@ namespace VoxelTerrain
                         });
 
                         dstManager.AddComponent<DisableRendering>(entity);
+                        dstManager.AddComponent<Static>(entity);
                         dstManager.AddComponent<VoxelTerrainChunkNewTag>(entity);
 
                         var scatterBuffer = dstManager.AddBuffer<VoxelTerrainChunkGroundScatterBufferElement>(entity);

@@ -104,7 +104,7 @@ namespace VoxelTerrain.ECS.Systems
     {
         public NativeParallelHashMap<int2, Entity> chunks;
 
-        private EndInitializationEntityCommandBufferSystem ecbSystem;
+        private EndSimulationEntityCommandBufferSystem ecbSystem;
         private World defaultWorld;
         private EntityManager entityManager;
 
@@ -117,7 +117,7 @@ namespace VoxelTerrain.ECS.Systems
 
             defaultWorld = World.DefaultGameObjectInjectionWorld;
             entityManager = defaultWorld.EntityManager;
-            ecbSystem = World.GetOrCreateSystem<EndInitializationEntityCommandBufferSystem>();
+            ecbSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
         protected override void OnDestroy()
@@ -154,7 +154,7 @@ namespace VoxelTerrain.ECS.Systems
                 int dy = -1;
 
                 int newCount = 0;
-                for (int i = 0; i < (radius * radius) && newCount < 50; i++)
+                for (int i = 0; i < (radius * radius) && newCount < 10; i++)
                 {
                     if (((-radius / 2) < x && x <= (radius / 2)) && ((-radius / 2) < y && y <= (radius / 2)))
                     {
@@ -271,10 +271,10 @@ namespace VoxelTerrain.ECS.Systems
     }
 
     [UpdateInGroup(typeof(InitializationSystemGroup), OrderFirst = true, OrderLast = false)]
-    [UpdateAfter(typeof(ClosestVoxelTerrainChunkFinderSystem))]
+    [UpdateAfter(typeof(BeginInitializationEntityCommandBufferSystem))]
     public partial class GenerateVoxelTerrainChunkSystem : SystemBase
     {
-        protected BeginPresentationEntityCommandBufferSystem tagSystem;
+        protected BeginInitializationEntityCommandBufferSystem tagSystem;
         protected World defaultWorld;
         protected EntityManager entityManager;
 
@@ -284,7 +284,7 @@ namespace VoxelTerrain.ECS.Systems
 
         protected override void OnCreate()
         {
-            tagSystem = World.GetOrCreateSystem<BeginPresentationEntityCommandBufferSystem>();
+            tagSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
             defaultWorld = World.DefaultGameObjectInjectionWorld;
             entityManager = defaultWorld.EntityManager;
         }
@@ -388,11 +388,11 @@ namespace VoxelTerrain.ECS.Systems
         }
     }
 
-    [UpdateInGroup(typeof(PresentationSystemGroup), OrderFirst = true, OrderLast = false)]
-    [UpdateAfter(typeof(BeginPresentationEntityCommandBufferSystem))]
+    [UpdateInGroup(typeof(InitializationSystemGroup), OrderFirst = true, OrderLast = false)]
+    [UpdateAfter(typeof(BeginInitializationEntityCommandBufferSystem))]
     public partial class GenerateVoxelTerrainMeshSystem : SystemBase
     {
-        protected BeginPresentationEntityCommandBufferSystem ecbSystem;
+        protected BeginInitializationEntityCommandBufferSystem ecbSystem;
         protected World defaultWorld;
         protected EntityManager entityManager;
 
@@ -400,34 +400,36 @@ namespace VoxelTerrain.ECS.Systems
         {
             defaultWorld = World.DefaultGameObjectInjectionWorld;
             entityManager = defaultWorld.EntityManager;
-            ecbSystem = World.GetOrCreateSystem<BeginPresentationEntityCommandBufferSystem>();
+            ecbSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
         }
 
-        private static Texture2D GetClimateColors(ChunkComponent chunk, NativeArray<VoxelTerrainChunkClimateColorBufferElement> climateBuffer) {
+        private static Texture2D GetClimateColors(ChunkComponent chunk, in NativeArray<VoxelTerrainChunkClimateColorBufferElement> climateBuffer) {
+            Profiler.BeginSample("Climate Color Texture");
             Texture2D tex = new Texture2D(chunk.grid.chunkSize, chunk.grid.chunkSize);
-            for (int y = 0; y < chunk.grid.chunkSize; y++)
+            var texPixels = tex.GetRawTextureData<Color32>();
+
+            for (int i = 0; i < climateBuffer.Length; i++)
             {
-                for (int x = 0; x < chunk.grid.chunkSize; x++)
-                {
-                    tex.SetPixel(x, y, climateBuffer[y * chunk.grid.chunkSize + x]);
-                }
+                texPixels[i] = (Color32)climateBuffer[i].value;
             }
 
-            tex.Apply();
+            tex.Apply(false);
+            Profiler.EndSample();
             return tex;
         }
 
-        private static Texture2D GetBiomeColors(ChunkComponent chunk, NativeArray<VoxelTerrainChunkTerrainColorBufferElement> terrainColorBuffer)
+        private static Texture2D GetBiomeColors(ChunkComponent chunk, in NativeArray<VoxelTerrainChunkTerrainColorBufferElement> terrainColorBuffer)
         {
+            Profiler.BeginSample("Biome Color Texture");
             Texture2D tex = new Texture2D(chunk.grid.chunkSize, chunk.grid.chunkSize);
-            for (int y = 0; y < chunk.grid.chunkSize; y++) {
-                for (int x = 0; x < chunk.grid.chunkSize; x++)
-                {
-                    tex.SetPixel(x, y, terrainColorBuffer[y * chunk.grid.chunkSize + x]);
-                }
+            var texPixels = tex.GetRawTextureData<Color32>();
+
+            for (int i = 0; i < terrainColorBuffer.Length; i++) {
+                texPixels[i] = (Color32) terrainColorBuffer[i].value;
             }
 
-            tex.Apply();
+            tex.Apply(false);
+            Profiler.EndSample();
             return tex;
         }
 
@@ -505,7 +507,7 @@ namespace VoxelTerrain.ECS.Systems
             WithNone<VoxelTerrainChunkRenderTag>().
             WithoutBurst().
             ForEach((int entityInQueryIndex, Entity e, in RenderMesh meshInstance, in ChunkComponent chunk) => {
-                if (renderCount >= 25) { return; }
+                if (renderCount >= 100) { return; }
 
                 Profiler.BeginSample("Init Render Buffers");
                 NativeArray<VoxelTerrainChunkVoxelBufferElement> terrainVoxels = GetBuffer<VoxelTerrainChunkVoxelBufferElement>(e).AsNativeArray();

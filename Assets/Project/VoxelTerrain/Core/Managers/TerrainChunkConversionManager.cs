@@ -36,6 +36,7 @@ namespace VoxelTerrain
             using (BlobAssetStore assetStore = new BlobAssetStore())
             {
                 Entity prefabEntity = GameObjectConversionUtility.ConvertGameObjectHierarchy(chunkGameObjectPrefab, GameObjectConversionSettings.FromWorld(dstManager.World, assetStore));
+                dstManager.AddComponent<Static>(prefabEntity);
 
                 /*
                 dstManager.AddComponent<VoxelTerrainChunkNewTag>(prefabEntity);
