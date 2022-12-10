@@ -316,7 +316,7 @@ GameObject:
   - component: {fileID: 7572662547514284513}
   - component: {fileID: 1795266510772219977}
   m_Layer: 6
-  m_Name: Chunk Lod 2
+  m_Name: Chunk Lod 3 mesh
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -353,15 +353,15 @@ LODGroup:
   m_AnimateCrossFading: 1
   m_LastLODIsBillboard: 0
   m_LODs:
-  - screenRelativeHeight: 0.6529018
+  - screenRelativeHeight: 0.26610252
     fadeTransitionWidth: 0
     renderers:
     - renderer: {fileID: 4447436629612515183}
-  - screenRelativeHeight: 0.19653086
+  - screenRelativeHeight: 0.071421884
     fadeTransitionWidth: 0
     renderers:
     - renderer: {fileID: 7684386109280943120}
-  - screenRelativeHeight: 0.0005630071
+  - screenRelativeHeight: 0.0035263677
     fadeTransitionWidth: 0
     renderers:
     - renderer: {fileID: 624597086050170087}

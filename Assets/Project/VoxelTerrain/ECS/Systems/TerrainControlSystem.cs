@@ -100,11 +100,12 @@ namespace VoxelTerrain.ECS.Systems
     }
 
     [UpdateInGroup(typeof(InitializationSystemGroup), OrderFirst = true, OrderLast = false)]
+    [UpdateAfter(typeof(BeginInitializationEntityCommandBufferSystem))]
     public partial class SpawnVoxelTerrainChunkSystem : SystemBase
     {
         public NativeParallelHashMap<int2, Entity> chunks;
 
-        private EndSimulationEntityCommandBufferSystem ecbSystem;
+        private BeginInitializationEntityCommandBufferSystem ecbSystem;
         private World defaultWorld;
         private EntityManager entityManager;
 
@@ -117,7 +118,7 @@ namespace VoxelTerrain.ECS.Systems
 
             defaultWorld = World.DefaultGameObjectInjectionWorld;
             entityManager = defaultWorld.EntityManager;
-            ecbSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            ecbSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
         }
 
         protected override void OnDestroy()
@@ -128,6 +129,7 @@ namespace VoxelTerrain.ECS.Systems
         protected override void OnStartRunning()
         {
             cam = Camera.main;
+            
         }
 
         protected override void OnUpdate()
@@ -138,12 +140,12 @@ namespace VoxelTerrain.ECS.Systems
 
             int radius = (int)TerrainManager.instance.terrainSettings.renderDistance;
             int2 center = WorldToGridSpace(cam.transform.position);
-            //Grid grid = TerrainManager.instance.terrainSettings.grid;
-            //Entity prefab = TerrainChunkConversionManager.chunkPrefab;
-
-            NativeParallelHashMap<int2, Entity> localChunks = chunks;
+            EntityQuery query = GetEntityQuery(ComponentType.ReadOnly<ChunkParent>());
+            var localChunks = query.ToComponentDataArray<ChunkParent>(Allocator.TempJob);
 
             var job1 = Entities.
+            WithReadOnly(localChunks).
+            WithDisposeOnCompletion(localChunks).
             WithAll<Prefab, ChunkParent>().
             WithNone<Parent>().
             WithBurst().
@@ -159,18 +161,26 @@ namespace VoxelTerrain.ECS.Systems
                     if (((-radius / 2) < x && x <= (radius / 2)) && ((-radius / 2) < y && y <= (radius / 2)))
                     {
                         int2 gridPosition = new int2(x, y) + center;
-                        if (!localChunks.ContainsKey(gridPosition))
+                        ChunkParent newChunkParent = new ChunkParent
+                        {
+                            grid = chunk.grid,
+                            gridPosition = gridPosition
+                        };
+
+                        bool exists = false;
+                        foreach (var chunkParent in localChunks) {
+                            if (chunkParent.gridPosition.Equals(newChunkParent.gridPosition)) {
+                                exists = true;
+                                break;
+                            }
+                        }
+
+                        if(!exists)
                         {
                             newCount++;
                             Entity entity = ecb.Instantiate(i, e);
-                            localChunks.Add(gridPosition, entity);
-
                             
-                            ecb.SetComponent(i, entity, new ChunkParent
-                            {
-                                grid = chunk.grid,
-                                gridPosition = gridPosition
-                            });
+                            ecb.SetComponent(i, entity, newChunkParent);
                             
                             ecb.SetComponent(i, entity, new Translation
                             {
@@ -189,7 +199,7 @@ namespace VoxelTerrain.ECS.Systems
                     x += dx;
                     y += dy;
                 }
-            }).Schedule(Dependency);
+            }).ScheduleParallel(Dependency);
 
             var ecb2 = ecbSystem.CreateCommandBuffer().AsParallelWriter();
 
