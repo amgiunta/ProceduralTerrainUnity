@@ -413,14 +413,16 @@ namespace VoxelTerrain.ECS.Systems
             ecbSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
         }
 
-        private static Texture2D GetClimateColors(ChunkComponent chunk, in NativeArray<VoxelTerrainChunkClimateColorBufferElement> climateBuffer) {
+        private static Texture2D GetClimateColors(ChunkComponent chunk, in NativeArray<VoxelTerrainChunkClimateColorBufferElement> climateBuffer, int divisor = 1) {
             Profiler.BeginSample("Climate Color Texture");
-            Texture2D tex = new Texture2D(chunk.grid.chunkSize, chunk.grid.chunkSize);
+            Texture2D tex = new Texture2D(chunk.grid.chunkSize/divisor, chunk.grid.chunkSize/divisor);
             var texPixels = tex.GetRawTextureData<Color32>();
 
-            for (int i = 0; i < climateBuffer.Length; i++)
+            int c = 0;
+            for (int i = 0; i < climateBuffer.Length; i+=(divisor * divisor))
             {
-                texPixels[i] = (Color32)climateBuffer[i].value;
+                texPixels[c] = (Color32)climateBuffer[i].value;
+                c++;
             }
 
             tex.Apply(false);
@@ -428,14 +430,16 @@ namespace VoxelTerrain.ECS.Systems
             return tex;
         }
 
-        private static Texture2D GetBiomeColors(ChunkComponent chunk, in NativeArray<VoxelTerrainChunkTerrainColorBufferElement> terrainColorBuffer)
+        private static Texture2D GetBiomeColors(ChunkComponent chunk, in NativeArray<VoxelTerrainChunkTerrainColorBufferElement> terrainColorBuffer, int divisor = 1)
         {
             Profiler.BeginSample("Biome Color Texture");
-            Texture2D tex = new Texture2D(chunk.grid.chunkSize, chunk.grid.chunkSize);
+            Texture2D tex = new Texture2D(chunk.grid.chunkSize/divisor, chunk.grid.chunkSize/divisor);
             var texPixels = tex.GetRawTextureData<Color32>();
 
-            for (int i = 0; i < terrainColorBuffer.Length; i++) {
-                texPixels[i] = (Color32) terrainColorBuffer[i].value;
+            int c = 0;
+            for (int i = 0; i < terrainColorBuffer.Length; i+=(divisor * divisor)) {
+                texPixels[c] = (Color32) terrainColorBuffer[i].value;
+                c++;
             }
 
             tex.Apply(false);
@@ -589,8 +593,8 @@ namespace VoxelTerrain.ECS.Systems
                 ecb.RemoveComponent<DisableRendering>(e);
 
                 Profiler.BeginSample("Generate Mesh Textures");
-                Texture2D climateTex = GetClimateColors(chunk, climateBuffer);
-                Texture2D colorTex = GetBiomeColors(chunk, terrainColorBuffer);
+                Texture2D climateTex = GetClimateColors(chunk, climateBuffer, 8);
+                Texture2D colorTex = GetBiomeColors(chunk, terrainColorBuffer, 8);
                 Profiler.EndSample();
 
                 Profiler.BeginSample("Apply Mesh Material and Textures");
