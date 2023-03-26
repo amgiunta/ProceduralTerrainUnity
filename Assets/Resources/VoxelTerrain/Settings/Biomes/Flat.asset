@@ -20,9 +20,9 @@ MonoBehaviour:
   heightNormalIntensity: 0.87
   minTerrainHeight: 1
   maxTerrainHeight: 50
-  generatorNoiseScale: {x: 253, y: 253}
+  generatorNoiseScale: {x: 1000, y: 1000}
   heightNormalNoiseScale: {x: 0.005, y: 0.005}
-  noiseRotation: 0.096
-  persistance: 0.11
-  lancunarity: 6.28
+  noiseRotation: 0.621
+  persistance: 0.08
+  lancunarity: 9.35
   octaves: 4

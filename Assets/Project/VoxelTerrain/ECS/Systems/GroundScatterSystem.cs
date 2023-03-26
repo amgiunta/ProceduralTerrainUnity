@@ -159,7 +159,7 @@ namespace VoxelTerrain.ECS.Systems {
     }
 
     [UpdateInGroup(typeof(PresentationSystemGroup))]
-    [UpdateAfter(typeof(GenerateVoxelTerrainChunkSystem))]
+    //[UpdateAfter(typeof(GenerateVoxelTerrainChunkSystem))]
     public partial class GroundScatterMoveSystem : SystemBase {
         protected BeginInitializationEntityCommandBufferSystem ecbSystem;
         protected World defaultWorld;

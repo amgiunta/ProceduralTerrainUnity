@@ -6,377 +6,17 @@ using Unity.Mathematics;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Burst;
+using Unity.Profiling;
 
-using UnityEngine.Profiling;
+//using UnityEngine.Profiling;
 
 namespace VoxelTerrain
 {
-    /*
-    public class MapPreview {
-        public enum MapLense { Height, Climate, Color, ColoredHeight };
-
-        public Dictionary<MapLense, Texture2D> mapLenses;
-        public bool isRunning {
-            get {
-                return running;
-            }
-        }
-
-        private int2 size;
-        private int chunkWidth;
-        private TerrainSettings settings;
-        private Biome[] biomes;
-
-        private bool running = false;
-        private Dictionary<JobHandle, IJobParallelFor> runningJobs;
-
-        private NativeArray<float> heightMap;
-        private NativeArray<Color> colorMap;
-        private int2 pixelSize {
-            get {
-                return new int2(size.x * chunkWidth, size.y * chunkWidth);
-            }
-        }
-
-        public MapPreview(int2 size, int chunkWidth, TerrainSettings settings, Biome[] biomes) {
-            mapLenses = new Dictionary<MapLense, Texture2D>();
-
-            runningJobs = new Dictionary<JobHandle, IJobParallelFor>();
-
-            this.size = size;
-            this.chunkWidth = chunkWidth / 8;
-            this.settings = settings;
-            this.biomes = biomes;
-        }
-
-        public void Generate() {
-            int flatMapSize = chunkWidth * chunkWidth;
-
-            float[] noiseMap = new float[(size.x * chunkWidth) * (size.y * chunkWidth)];
-            float[] heightMap = new float[(size.x * chunkWidth) * (size.y * chunkWidth)];
-            float2[] climateMap = new float2[(size.x * chunkWidth) * (size.y * chunkWidth)];
-            Color[] colorMap = new Color[(size.x * chunkWidth) * (size.y * chunkWidth)];
-
-            for (int y = 0; y < size.y; y++) {
-                for (int x = 0; x < size.x; x++) {
-                    int2 gridPosition = new int2(x, y);
-                    foreach (int i in System.Enum.GetValues(typeof(MapLense))) {
-                        switch ((MapLense)i) {
-                            case MapLense.Climate:
-                                TerrainNoise.CreateClimateMap(chunkWidth, ref climateMap, (y * (size.x * flatMapSize)) + x * flatMapSize, settings, gridPosition);
-                                break;
-                            case MapLense.Color:
-                                TerrainNoise.CreateColorMap(gridPosition, chunkWidth, ref colorMap, (y * (size.x * flatMapSize)) + x * flatMapSize, settings, biomes);
-                                break;
-                            case MapLense.Height:
-                                TerrainNoise.CreateHeightMap(gridPosition, chunkWidth, ref heightMap, (y * (size.x * flatMapSize)) + x * flatMapSize, settings, biomes);
-                                break;
-                        }
-                    }
-                }
-            }
-
-            SetLenseTexture(MapLense.Climate, TerrainNoise.CreateClimateTexture(climateMap, chunkWidth, size));
-            SetLenseTexture(MapLense.Color, TerrainNoise.CreateColorTexture(colorMap, chunkWidth, size));
-            SetLenseTexture(MapLense.Height, TerrainNoise.CreateHeightTexture(heightMap, chunkWidth, size));
-            SetLenseTexture(MapLense.ColoredHeight, TerrainNoise.CreateColoredHeightTexture(colorMap, heightMap, chunkWidth, size));
-        }
-
-        public void GenerateAsync() {
-            if (running)
-                return;
-
-            CompleteRunningJobs();
-
-            float lowest = float.MaxValue;
-            float highest = float.MinValue;
-            foreach (Biome biome in biomes) {
-                if (biome.maxTerrainHeight > highest)
-                    highest = biome.maxTerrainHeight;
-                if (biome.minTerrainHeight < lowest)
-                    lowest = biome.minTerrainHeight;
-            }
-
-            int bufferLength = (size.x * chunkWidth) * (size.y * chunkWidth);
-
-            JobHandle heightMapHandle = default;
-            JobHandle colorHandle = default;
-
-            foreach (int i in System.Enum.GetValues(typeof(MapLense)))
-            {
-                switch ((MapLense)i)
-                {
-                    case MapLense.Height:
-                        heightMap = new NativeArray<float>(new float[bufferLength], Allocator.TempJob);
-                        
-                        HeightMapJob firstJob = new HeightMapJob
-                        {
-                            biomes = new NativeArray<Biome>(biomes, Allocator.Persistent),
-                            heights = heightMap,
-                            climateSettings = settings,
-                            chunkPosition = new float2(0, 0),
-                            textureSize = size,
-                            chunkWidth = chunkWidth,
-                            seed = settings.seed
-                        };
-                        
-                        heightMapHandle = firstJob.Schedule(bufferLength, chunkWidth);
-
-                        if (!mapLenses.ContainsKey(MapLense.Height)) {
-                            SetLenseTexture(MapLense.Height, new Texture2D(pixelSize.x, pixelSize.y));
-                        }
-
-                        HeightTextureJob secondJob = new HeightTextureJob
-                        {
-                            heights = heightMap,
-                            colors = new NativeArray<Color>(new Color[bufferLength], Allocator.Persistent),
-                            textureSize = size,
-                            chunkWidth = chunkWidth,
-                            lowest = lowest,
-                            highest = highest
-                        };
-                        JobHandle secondHandle = secondJob.Schedule(bufferLength, chunkWidth, heightMapHandle);
-                        runningJobs.Add(secondHandle, secondJob);
-                        break;
-                    case MapLense.Color:
-                        colorMap = new NativeArray<Color>(new Color[bufferLength], Allocator.TempJob);
-                        ColorTextureJob colorJob = new ColorTextureJob
-                        {
-                            biomes = new NativeArray<Biome>(biomes, Allocator.Persistent),
-                            colors = colorMap,
-                            climateSettings = settings,
-                            chunkPosition = new float2(0, 0),
-                            textureSize = size,
-                            chunkWidth = chunkWidth,
-                            seed = settings.seed
-                        };
-                        colorHandle = colorJob.Schedule(bufferLength, chunkWidth);
-                        runningJobs.Add(colorHandle, colorJob);
-                        break;
-                    case MapLense.Climate:
-                        ClimateTextureJob climateJob = new ClimateTextureJob {
-                            colors = new NativeArray<Color>(bufferLength, Allocator.Persistent),
-                            textureSize = size,
-                            climateSettings = settings,
-                            chunkPosition = new float2(0, 0),
-                            chunkWidth = chunkWidth,
-                            seed = settings.seed
-                        };
-                        JobHandle climateHandle = climateJob.Schedule(bufferLength, chunkWidth);
-                        runningJobs.Add(climateHandle, climateJob);
-                        break;
-                    case MapLense.ColoredHeight:
-                        ColoredHeightTextureJob coloredHeightJob = new ColoredHeightTextureJob
-                        {
-                            heightMap = heightMap,
-                            colorMap = colorMap,
-                            colors = new NativeArray<Color>(new Color[bufferLength], Allocator.Persistent),
-                            lowest = lowest,
-                            highest = highest
-                        };
-
-                        JobHandle dependancies = JobHandle.CombineDependencies(heightMapHandle, colorHandle);
-
-                        JobHandle coloredHeightHandle = coloredHeightJob.Schedule(bufferLength, chunkWidth, dependancies);
-                        runningJobs.Add(coloredHeightHandle, coloredHeightJob);
-                        break;
-                    default:
-                        continue;
-                }
-            }
-
-            running = true;
-        }
-
-        public Texture2D GetLenseTexture(MapLense lense) {
-            if (!mapLenses.ContainsKey(lense)) {
-                mapLenses.Add(lense, new Texture2D(size.x * chunkWidth, size.x * chunkWidth));
-            }
-
-            return mapLenses[lense];
-        }
-
-        public void SetLenseTexture(MapLense lense, Texture2D texture) {
-
-            if (!mapLenses.ContainsKey(lense))
-            {
-                mapLenses.Add(lense, texture);
-            }
-            else {
-                mapLenses[lense] = texture;
-            }
-        }
-
-        public void CompleteRunningJobs() {
-            while (runningJobs.Count > 0) {
-                var process = runningJobs.First();
-                if (process.Value is HeightTextureJob)
-                {
-                    HeightTextureJob job = (HeightTextureJob)process.Value;
-                    process.Key.Complete();
-                    Texture2D tex = new Texture2D(pixelSize.x, pixelSize.y);
-                    tex.SetPixels(job.colors.ToArray());
-                    tex.Apply();
-                    SetLenseTexture(MapLense.Height, tex);
-
-                    job.colors.Dispose();
-                    runningJobs.Remove(process.Key);
-                }
-                else if (process.Value is ColorTextureJob)
-                {
-                    ColorTextureJob job = (ColorTextureJob)process.Value;
-                    process.Key.Complete();
-                    Texture2D tex = new Texture2D(pixelSize.x, pixelSize.y);
-                    tex.SetPixels(job.colors.ToArray());
-                    tex.Apply();
-                    SetLenseTexture(MapLense.Color, tex);
-
-                    job.biomes.Dispose();
-                    runningJobs.Remove(process.Key);
-                }
-                else if (process.Value is ClimateTextureJob) {
-                    ClimateTextureJob job = (ClimateTextureJob)process.Value;
-                    process.Key.Complete();
-                    Texture2D tex = new Texture2D(pixelSize.x, pixelSize.y);
-                    tex.SetPixels(job.colors.ToArray());
-                    tex.Apply();
-                    SetLenseTexture(MapLense.Climate, tex);
-
-                    job.colors.Dispose();
-                    runningJobs.Remove(process.Key);
-                }
-                else if (process.Value is ColoredHeightTextureJob)
-                {
-                    ColoredHeightTextureJob job = (ColoredHeightTextureJob)process.Value;
-                    process.Key.Complete();
-                    Texture2D tex = new Texture2D(pixelSize.x, pixelSize.y);
-                    tex.SetPixels(job.colors.ToArray());
-                    tex.Apply();
-                    SetLenseTexture(MapLense.ColoredHeight, tex);
-
-                    job.heightMap.Dispose();
-                    job.colorMap.Dispose();
-                    job.colors.Dispose();
-                    runningJobs.Remove(process.Key);
-                }
-            }
-
-            running = false;
-        }
-
-        /*
-        [BurstCompile(Debug = true)]
-        public struct HeightMapJob : IJobParallelFor {
-            [ReadOnly] public NativeArray<Biome> biomes;
-            public NativeArray<float> heights;
-            public ClimateSettings climateSettings;
-            public float2 chunkPosition;
-            public int2 textureSize;
-            public int chunkWidth;
-            public int seed;
-
-            public void Execute(int id)
-            {
-                int y = id / (textureSize.x * chunkWidth);
-                int x = id % (textureSize.x * chunkWidth);
-                float2 climate = TerrainNoise.Climate(x, y, climateSettings, chunkPosition, chunkWidth, seed);
-
-                heights[y * (textureSize.x * chunkWidth) + x] = TerrainNoise.GetHeightAndNormalAtPoint(x, y, climate, biomes, chunkPosition, chunkWidth, seed, out _);
-            }
-        }
-        
-
-        [BurstCompile(Debug = true)]
-        public struct HeightTextureJob : IJobParallelFor
-        {
-            [ReadOnly] public NativeArray<float> heights;
-            public NativeArray<Color> colors;
-            public int2 textureSize;
-            public int chunkWidth;
-            public float highest;
-            public float lowest;
-
-            public void Execute(int id)
-            {
-                float normalized = math.unlerp(lowest, highest, heights[id]);
-
-                colors[id] = Color.Lerp(Color.black, Color.white, normalized);
-            }
-        }
-
-        [BurstCompile(Debug = true)]
-        public struct ColorTextureJob : IJobParallelFor {
-            [ReadOnly] public NativeArray<Biome> biomes;
-            public NativeArray<Color> colors;
-            public ClimateSettings climateSettings;
-            public float2 chunkPosition;
-            public int2 textureSize;
-            public int chunkWidth;
-            public int seed;
-
-            public void Execute(int id) {
-                int y = id / (textureSize.x * chunkWidth);
-                int x = id % (textureSize.x * chunkWidth);
-                float2 climate = TerrainNoise.Climate(x * 8, y * 8, climateSettings, chunkPosition, chunkWidth, seed);
-
-                Color totalColor = Color.black;
-                float totalWeight = 0;
-
-                foreach (Biome biome in biomes) {
-                    float weight = biome.Idealness(climate.x, climate.y);
-                    Color color = Color.Lerp(Color.black, biome.color, weight);
-
-                    totalColor += color;
-                    totalWeight += weight;
-                }
-
-                colors[y * (textureSize.x * chunkWidth) + x] = totalColor / totalWeight;
-            }
-        }
-
-        [BurstCompile(Debug = true)]
-        public struct ClimateTextureJob : IJobParallelFor
-        {
-            public NativeArray<Color> colors;
-            public int2 textureSize;
-            public ClimateSettings climateSettings;
-            public float2 chunkPosition;
-            public int chunkWidth;
-            public int seed;
-
-            public void Execute(int id) {
-                int y = id / (textureSize.x * chunkWidth);
-                int x = id % (textureSize.x * chunkWidth);
-                float2 climate = TerrainNoise.Climate(x * 8, y * 8, climateSettings, chunkPosition, chunkWidth, seed);
-
-                Color temperatureColor = Color.Lerp(Color.black, Color.red, climate.x);
-                Color moistureColor = Color.Lerp(Color.black, Color.blue, climate.y);
-
-                colors[y * (textureSize.x * chunkWidth) + x] = (temperatureColor + moistureColor) / (climate.x + climate.y);
-            }
-        }
-
-        [BurstCompile(Debug = true)]
-        public struct ColoredHeightTextureJob : IJobParallelFor {
-            [ReadOnly] public NativeArray<float> heightMap;
-            [ReadOnly] public NativeArray<Color> colorMap;
-            public NativeArray<Color> colors;
-            public float highest;
-            public float lowest;
-
-            public void Execute(int id) {
-                colors[id] = Color.Lerp(Color.black, colorMap[id], math.unlerp(lowest, highest, heightMap[id]));
-            }
-        }
-    }
-    */
-
     public static class TerrainNoise
     {
-        public static float Noise(float x, float y, float persistance, float lancunarity, float2 offset = default, float2 scale = default, int octaves = 1, int seed = 0)
+        
+        public static float Noise(float x, float y, float persistance, float lancunarity, float2 offset = default, float2 scale = default, int octaves = 1)
         {
-            if (seed == 0) { seed = 1; }
-            Unity.Mathematics.Random random = new Unity.Mathematics.Random((uint) seed);
 
             if (scale.x == 0)
             {
@@ -386,35 +26,15 @@ namespace VoxelTerrain
             {
                 scale.y = 0.00001f;
             }
-
-            float amplitude = 1;
-            float frequency = 1;
-            float noiseHeight = 0;
-
             
-            for (int i = 0; i < octaves; i++)
-            {
-                float2 octOffset = offset + random.NextFloat2();
-                float2 sample = new float2(
-                    (x + octOffset.x) / scale.x * frequency,
-                    (y + octOffset.y) / scale.y * frequency
-                );
-
-                float perlinValue = noise.snoise(sample);
-                noiseHeight += perlinValue * amplitude;
-
-                amplitude *= persistance;
-                frequency *= lancunarity;
-            }
-            
-            return math.remap(-1f, 1f, 0f, 1f, noiseHeight);
+            return math.remap(-1f, 1f, 0f, 1f, Noise(x, y, persistance, lancunarity, out _, out _, offset, scale, octaves));
         }
 
-        public static float Noise(float x, float y, float persistance, float lancunarity, out float dx, out float dy, float2 offset = default, float2 scale = default, int octaves = 1, int seed = 0, float rotationDegrees = 0)
+        public static float Noise(float x, float y, float persistance, float lancunarity, out float dx, out float dy, float2 offset = default, float2 scale = default, int octaves = 1, float rotationDegrees = 0)
         {
-            if (seed == 0) { seed = 1; }
-            Unity.Mathematics.Random random = new Unity.Mathematics.Random((uint)seed);
-
+            //ProfilerMarker parentMarker = new ProfilerMarker("Terrain Noise");
+            //ProfilerMarker loopMarker = new ProfilerMarker("Terrain Noise Loop");
+            //parentMarker.Begin();
             if (scale.x == 0)
             {
                 scale.x = 0.00001f;
@@ -432,13 +52,8 @@ namespace VoxelTerrain
 
             for (int i = 0; i < octaves; i++)
             {
-                float2 octOffset = (offset + random.NextFloat2());
-                /*
-                float2 sample = new float2(
-                    (x * stride + octOffset.x) / scale.x * frequency,
-                    (y * stride + octOffset.y) / scale.y * frequency
-                );
-                */
+                //loopMarker.Begin();
+                float2 octOffset = (offset);
 
                 float2 sample = (new float2(x, y) + octOffset) / (scale) * frequency;
 
@@ -449,17 +64,19 @@ namespace VoxelTerrain
 
                 amplitude *= persistance;
                 frequency *= lancunarity;
+                //loopMarker.End();
             }
-
-            return math.remap(-1f, 1f, 0f, 1f, noiseHeight);
+            float result = math.remap(-1f, 1f, 0f, 1f, noiseHeight);
+            //parentMarker.End();
+            return result;
         }
 
-        public static float GetHeightAtPoint(float x, float y, float2 climate, IEnumerable biomes, float2 chunkPosition, int chunkWidth, float voxelSize, int seed) {
+        public static float GetHeightAtPoint(float x, float y, float2 climate, IEnumerable biomes, float2 chunkPosition, int chunkWidth, float voxelSize) {
             float totalHeight = 0;
             float totalWeight = 0;
             foreach (Biome biome in biomes)
             {
-                float noise = biome.GetNoiseAtPoint(x, y, chunkPosition * chunkWidth * voxelSize, seed);
+                float noise = biome.GetNoiseAtPoint(x, y, chunkPosition * chunkWidth * voxelSize);
                 float height = math.remap(0, 1, biome.minTerrainHeight, biome.maxTerrainHeight, noise);
                 float weight = biome.Idealness(climate.x, climate.y);
 
@@ -470,7 +87,7 @@ namespace VoxelTerrain
             return totalHeight / totalWeight;
         }
 
-        public static float GetHeightAtPoint(float x, float y, float2 climate, NativeArray<Biome> biomes, float2 chunkPosition, int chunkWidth, int seed)
+        public static float GetHeightAtPoint(float x, float y, float2 climate, NativeArray<Biome> biomes, float2 chunkPosition, int chunkWidth)
         {
             float totalHeight = 0;
             float totalWeight = 0;
@@ -479,7 +96,7 @@ namespace VoxelTerrain
             {
                 Biome biome = biomes[i];
 
-                float noise = biome.GetNoiseAtPoint(x, y, chunkPosition * chunkWidth, seed);
+                float noise = biome.GetNoiseAtPoint(x, y, chunkPosition * chunkWidth);
                 float height = math.remap(0, 1, biome.minTerrainHeight, biome.maxTerrainHeight, noise);
                 float weight = biome.Idealness(climate.x, climate.y);
 
@@ -490,7 +107,7 @@ namespace VoxelTerrain
             return totalHeight / totalWeight;
         }
 
-        public static float GetHeightAndNormalAtPoint(float x, float y, float2 climate, NativeArray<Biome> biomes, float2 chunkPosition, int chunkWidth, float voxelSize, int seed, out float3 normal)
+        public static float GetHeightAndNormalAtPoint(float x, float y, float2 climate, in NativeArray<Biome> biomes, float2 chunkPosition, int chunkWidth, float voxelSize, int seed, out float3 normal)
         {   
             float totalHeight = 0;
             float totalDx = 0;
@@ -501,7 +118,11 @@ namespace VoxelTerrain
             {
                 Biome biome = biomes[i];
 
-                float3 noise = biome.GetNoiseAndDerivativeAtPoint(x, y, chunkPosition, chunkWidth, voxelSize, seed);
+                //float3 noise = biome.GetNoiseAndDerivativeAtPoint(x, y, chunkPosition, chunkWidth, voxelSize);
+                float3 noise = Noise(
+                    x, y, biome.persistance, biome.lancunarity,
+                    chunkPosition * chunkWidth, biome.generatorNoiseScale/voxelSize, biome.octaves
+                );
                 float height = math.remap(0, 1, biome.minTerrainHeight, biome.maxTerrainHeight, noise.x);
                 float dx = noise.y;
                 float dy = noise.z;
@@ -518,7 +139,7 @@ namespace VoxelTerrain
             return totalHeight / totalWeight;
         }
 
-        public static float GetHeightAtPoint(float x, float y, float2 climate, NativeArray<Biome>.ReadOnly biomes, float2 chunkPosition, int chunkWidth, int seed)
+        public static float GetHeightAtPoint(float x, float y, float2 climate, NativeArray<Biome>.ReadOnly biomes, float2 chunkPosition, int chunkWidth)
         {
             float totalHeight = 0;
             float totalWeight = 0;
@@ -526,7 +147,7 @@ namespace VoxelTerrain
             for (int i = 0; i < biomes.Length; i++) {
                 Biome biome = biomes[i];
 
-                float noise = biome.GetNoiseAtPoint(x, y, chunkPosition * chunkWidth, seed);
+                float noise = biome.GetNoiseAtPoint(x, y, chunkPosition * chunkWidth);
                 float height = math.remap(0, 1, biome.minTerrainHeight, biome.maxTerrainHeight, noise);
                 float weight = biome.Idealness(climate.x, climate.y);
 
@@ -553,13 +174,57 @@ namespace VoxelTerrain
             return totalColor / totalWeight;
         }
 
+        public static void GetDataAtPoint( 
+            in NativeArray<Biome> biomes, float x, float y, float2 chunkPosition, int chunkWidth, float voxelSize,
+            ClimateSettings climateSettings,
+            out float3 normal, out float height, out float2 climate, out Color color
+        ) {
+            //ProfilerMarker dataMarker = new ProfilerMarker("Getting Voxel Data");
+            //dataMarker.Begin();
+            climate = Climate(x, y, climateSettings, chunkPosition, chunkWidth, voxelSize);
+
+            float totalHeight = 0;
+            float totalDx = 0;
+            float totalDy = 0;
+            float totalWeight = 0;
+            Color totalColor = Color.black;
+
+            for (int i = 0; i < biomes.Length; i++)
+            {
+                Biome biome = biomes[i];
+                float ndx; float ndy;
+
+                float3 noise = new float3(
+                    Noise(x, y, biome.persistance, biome.lancunarity, out ndx, out ndy, chunkPosition * chunkWidth, biome.generatorNoiseScale / voxelSize, biome.octaves, biome.noiseRotation),
+                    ndx, ndy
+                );
+                height = math.remap(0, 1, biome.minTerrainHeight, biome.maxTerrainHeight, noise.x);
+                float dx = noise.y;
+                float dy = noise.z;
+                float weight = biome.Idealness(climate.x, climate.y);
+                color = Color.Lerp(Color.black, biome.color, weight);
+
+                totalColor += color;
+
+                totalHeight += height * weight;
+                totalDx += dx * weight;
+                totalDy += dy * weight;
+                totalWeight += weight;
+            }
+
+            normal = math.normalize(new float3(-(totalDx / totalWeight), 1, -(totalDy / totalWeight)));
+            color = totalColor / totalWeight;
+            height = totalHeight / totalWeight;
+            //dataMarker.End();
+        }
+
         public static void CreateNoiseMap(int chunkWidth, TerrainSettings terrainSettings, Biome biome, ref float[] noiseMap, int startIndex = 0, float2 offset = default)
         {
             for (int y = 0; y < chunkWidth; y++)
             {
                 for (int x = 0; x < chunkWidth; x++)
                 {
-                    noiseMap[(y * chunkWidth + x) + startIndex] = Noise(x, y, biome.persistance, biome.lancunarity, out _ , out _ , offset, biome.generatorNoiseScale, biome.octaves, terrainSettings.seed, biome.noiseRotation);
+                    noiseMap[(y * chunkWidth + x) + startIndex] = Noise(x, y, biome.persistance, biome.lancunarity, out _ , out _ , offset, biome.generatorNoiseScale, biome.octaves, biome.noiseRotation);
                 }
             }
         }
@@ -569,7 +234,7 @@ namespace VoxelTerrain
             {
                 for (int x = 0; x < chunkWidth; x++)
                 {
-                    noiseMap[(y * chunkWidth + x) + startIndex] = Noise(x, y, biome.persistance, biome.lancunarity, offset, biome.generatorNoiseScale, biome.octaves, seed);
+                    noiseMap[(y * chunkWidth + x) + startIndex] = Noise(x, y, biome.persistance, biome.lancunarity, offset, biome.generatorNoiseScale, biome.octaves);
                 }
             }
         }
@@ -582,10 +247,10 @@ namespace VoxelTerrain
                 {
                     float totalNoise = 0;
                     float totalWeight = 0;
-                    float2 climate = Climate(x, y, settings, chunkPosition, chunkWidth, voxelSize, settings.seed);
+                    float2 climate = Climate(x, y, settings, chunkPosition, chunkWidth, voxelSize);
                     foreach (Biome biome in biomes)
                     {
-                        float noise = biome.GetNoiseAtPoint(x, y, chunkPosition * chunkWidth, settings.seed);
+                        float noise = biome.GetNoiseAtPoint(x, y, chunkPosition * chunkWidth);
                         float weight = biome.Idealness(climate.x, climate.y);
 
                         totalNoise += noise * weight;
@@ -603,22 +268,24 @@ namespace VoxelTerrain
             {
                 for (int x = 0; x < chunkWidth; x++)
                 {
-                    float2 climate = Climate(x, y, settings, chunkPosition, chunkWidth, voxelSize, settings.seed);
+                    float2 climate = Climate(x, y, settings, chunkPosition, chunkWidth, voxelSize);
 
-                    float height = GetHeightAtPoint(x, y, climate, biomes, chunkPosition, chunkWidth, voxelSize, settings.seed);
+                    float height = GetHeightAtPoint(x, y, climate, biomes, chunkPosition, chunkWidth, voxelSize);
 
                     heightMap[startIndex + (y * chunkWidth + x)] = height;
                 }
             }
         }
 
-        public static float2 Climate(float x, float y, ClimateSettings climateSettings, float2 gridPosition, int chunkWidth, float voxelSize, int seed) {
-            float temperature = Noise(x, y, climateSettings.temperaturePersistance, climateSettings.temperatureLancunarity, gridPosition * chunkWidth, climateSettings.temperatureScale / voxelSize, climateSettings.temperatureOctaves, seed);
+        public static float2 Climate(float x, float y, ClimateSettings climateSettings, float2 gridPosition, int chunkWidth, float voxelSize) {
+            //ProfilerMarker climate = new ProfilerMarker("Get Climate");
+            //climate.Begin();
+            float temperature = Noise(x, y, climateSettings.temperaturePersistance, climateSettings.temperatureLancunarity, gridPosition * chunkWidth, climateSettings.temperatureScale / voxelSize, climateSettings.temperatureOctaves);
             temperature = math.clamp(math.unlerp(climateSettings.minTemperature, climateSettings.maxTemperature, temperature), 0, 1);
 
-            float moisture = Noise(x, y, climateSettings.moisturePersistance, climateSettings.moistureLancunarity, gridPosition * chunkWidth, climateSettings.moistureScale / voxelSize, climateSettings.moistureOctaves, seed);
+            float moisture = Noise(x, y, climateSettings.moisturePersistance, climateSettings.moistureLancunarity, gridPosition * chunkWidth, climateSettings.moistureScale / voxelSize, climateSettings.moistureOctaves);
             moisture = math.clamp(math.unlerp(climateSettings.minMoisture, climateSettings.maxMoisture, moisture), 0, 1);
-
+            //climate.End();
             return new float2(temperature, moisture);
         }
 
@@ -652,7 +319,7 @@ namespace VoxelTerrain
                 for (int x = 0; x < chunkWidth; x++)
                 {
 
-                    climateMap[(y * chunkWidth + x) + startIndex] = Climate(x, y, settings, gridPosition, chunkWidth, voxelSize, settings.seed);
+                    climateMap[(y * chunkWidth + x) + startIndex] = Climate(x, y, settings, gridPosition, chunkWidth, voxelSize);
                 }
             }
         }
@@ -664,7 +331,7 @@ namespace VoxelTerrain
                 {
                     Color totalColor = Color.black;
                     float totalWeight = 0;
-                    float2 climate = Climate(x, y, settings, chunkPosition, chunkWidth, voxelSize, settings.seed);
+                    float2 climate = Climate(x, y, settings, chunkPosition, chunkWidth, voxelSize);
                     
                     foreach (Biome biome in biomes)
                     {

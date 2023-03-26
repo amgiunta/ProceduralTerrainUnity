@@ -39,18 +39,18 @@ namespace VoxelTerrain
                         scatterBuffer.ResizeUninitialized(10);
 
                         var voxelBuffer = dstManager.AddBuffer<VoxelTerrainChunkVoxelBufferElement>(entity);
-                        voxelBuffer.ResizeUninitialized(grid.chunkSize * grid.chunkSize);
-                        var voxelTopBuffer = dstManager.AddBuffer<VoxelTerrainChunkTopEdgeBufferElement>(entity);
-                        voxelTopBuffer.ResizeUninitialized(grid.chunkSize + 1);
-                        var voxelRightBuffer = dstManager.AddBuffer<VoxelTerrainChunkRightEdgeBufferElement>(entity);
-                        voxelRightBuffer.ResizeUninitialized(grid.chunkSize);
+                        // voxelBuffer.ResizeUninitialized(grid.chunkSize * grid.chunkSize);
+                        // var voxelTopBuffer = dstManager.AddBuffer<VoxelTerrainChunkTopEdgeBufferElement>(entity);
+                        // voxelTopBuffer.ResizeUninitialized(grid.chunkSize + 1);
+                        // var voxelRightBuffer = dstManager.AddBuffer<VoxelTerrainChunkRightEdgeBufferElement>(entity);
+                        // voxelRightBuffer.ResizeUninitialized(grid.chunkSize);
 
-                        var climateBuffer = dstManager.AddBuffer<VoxelTerrainChunkClimateBufferElement>(entity);
-                        climateBuffer.ResizeUninitialized(grid.chunkSize * grid.chunkSize);
-                        var climateColorBuffer = dstManager.AddBuffer<VoxelTerrainChunkClimateColorBufferElement>(entity);
-                        climateColorBuffer.ResizeUninitialized(grid.chunkSize * grid.chunkSize);
-                        var colorBuffer = dstManager.AddBuffer<VoxelTerrainChunkTerrainColorBufferElement>(entity);
-                        colorBuffer.ResizeUninitialized(grid.chunkSize * grid.chunkSize);
+                        // var climateBuffer = dstManager.AddBuffer<VoxelTerrainChunkClimateBufferElement>(entity);
+                        // climateBuffer.ResizeUninitialized(grid.chunkSize * grid.chunkSize);
+                        // var climateColorBuffer = dstManager.AddBuffer<VoxelTerrainChunkClimateColorBufferElement>(entity);
+                        // climateColorBuffer.ResizeUninitialized(grid.chunkSize * grid.chunkSize);
+                        // var colorBuffer = dstManager.AddBuffer<VoxelTerrainChunkTerrainColorBufferElement>(entity);
+                        // colorBuffer.ResizeUninitialized(grid.chunkSize * grid.chunkSize);
                     }
                 }
             }
@@ -59,6 +59,7 @@ namespace VoxelTerrain
                 public Grid grid;
                 public int2 gridPosition;
                 public uint lodLevel;
+                public int2 parentChunkPosition;
             }
         }
     }

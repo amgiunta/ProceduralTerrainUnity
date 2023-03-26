@@ -18,11 +18,10 @@ MonoBehaviour:
     voxelSize: 1
     chunkSize: 16
   biomes:
-  - {fileID: 11400000, guid: 3cbd3928c9191024e8f2dfea29194299, type: 2}
-  - {fileID: 11400000, guid: c5ee01b1b2d380043a9b0998bf73ed65, type: 2}
   - {fileID: 11400000, guid: 4b420935342e616439ea479109fd3c43, type: 2}
+  - {fileID: 11400000, guid: 3cbd3928c9191024e8f2dfea29194299, type: 2}
   - {fileID: 11400000, guid: 4e029813ac218524ab0df8f436e82dcc, type: 2}
-  renderDistance: 50
+  renderDistance: 51
   minTemperature: 0
   maxTemperature: 1
   temperatureLancunarity: 1.18
