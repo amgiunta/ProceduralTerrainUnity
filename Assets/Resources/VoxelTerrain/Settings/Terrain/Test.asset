@@ -21,7 +21,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 4b420935342e616439ea479109fd3c43, type: 2}
   - {fileID: 11400000, guid: 3cbd3928c9191024e8f2dfea29194299, type: 2}
   - {fileID: 11400000, guid: 4e029813ac218524ab0df8f436e82dcc, type: 2}
-  renderDistance: 51
+  renderDistance: 50
   minTemperature: 0
   maxTemperature: 1
   temperatureLancunarity: 1.18

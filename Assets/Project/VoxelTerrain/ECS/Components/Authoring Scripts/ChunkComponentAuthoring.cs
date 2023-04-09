@@ -59,7 +59,6 @@ namespace VoxelTerrain
                 public Grid grid;
                 public int2 gridPosition;
                 public uint lodLevel;
-                public int2 parentChunkPosition;
             }
         }
     }

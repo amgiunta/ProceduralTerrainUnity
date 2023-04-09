@@ -96,7 +96,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   grid:
     voxelSize: 1
-    chunkSize: 32
+    chunkSize: 16
   gridPosition:
     x: 0
     y: 0
@@ -145,11 +145,11 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0, y: 0, z: 0}
   m_Size: 1
-  m_FadeMode: 0
+  m_FadeMode: 1
   m_AnimateCrossFading: 1
   m_LastLODIsBillboard: 0
   m_LODs:
-  - screenRelativeHeight: 0.000580488
+  - screenRelativeHeight: 0.0022446723
     fadeTransitionWidth: 0
     renderers:
     - renderer: {fileID: 6787484620578712217}
@@ -171,7 +171,7 @@ MonoBehaviour:
     y: 0
   grid:
     voxelSize: 1
-    chunkSize: 32
+    chunkSize: 16
 --- !u!114 &1795266510772219977
 MonoBehaviour:
   m_ObjectHideFlags: 0
