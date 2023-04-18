@@ -31,7 +31,7 @@ namespace VoxelTerrain
                             lodLevel = this.lodLevel
                         });
 
-                        dstManager.AddComponent<DisableRendering>(entity);
+                        //dstManager.AddComponent<DisableRendering>(entity);
                         dstManager.AddComponent<Static>(entity);
                         dstManager.AddComponent<VoxelTerrainChunkNewTag>(entity);
 

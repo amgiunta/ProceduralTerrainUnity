@@ -283,6 +283,83 @@ namespace VoxelTerrain.ECS.Systems
             );
         }
     }
+
+    [BurstCompile]
+    [AlwaysUpdateSystem]
+    [UpdateInGroup(typeof(InitializationSystemGroup))]
+    [UpdateBefore(typeof(SpawnVoxelTerrainChunkSystemV2))]
+    public partial class EnableDisableVoxelTerrainSystem : SystemBase {
+        protected World defaultWorld;
+        protected EntityManager entityManager;
+        protected EndInitializationEntityCommandBufferSystem ecbSystem;
+
+        private Camera cam;
+
+        private int2 WorldToGridSpace(Vector3 position, Grid grid)
+        {
+            int vx = (int) math.floor(position.x * grid.voxelSize);
+            int vy = (int) math.floor(position.z * grid.voxelSize);
+            return new int2(
+                vx / grid.chunkSize,
+                vy / grid.chunkSize
+            );
+        }
+
+        [BurstCompile]
+        protected override void OnCreate()
+        {
+            defaultWorld = World.DefaultGameObjectInjectionWorld;
+            entityManager = defaultWorld.EntityManager;
+            ecbSystem = World.GetOrCreateSystem<EndInitializationEntityCommandBufferSystem>();
+        }
+
+        [BurstCompile]
+        protected override void OnStartRunning()
+        {
+            cam = Camera.main;
+        }
+
+        [BurstCompile]
+        protected override void OnUpdate() {
+            float radius = TerrainManager.instance.terrainSettings.renderDistance;
+            EntityQuery allChunkPrefabsQuery = GetEntityQuery(
+                new EntityQueryDesc{
+                    All = new ComponentType[] {typeof(Prefab), typeof(ChunkParent)}
+                }
+            );
+            if (allChunkPrefabsQuery.CalculateEntityCount() == 0) {return;}
+
+            var chunkPrefabs = allChunkPrefabsQuery.ToEntityArray(Allocator.Temp);
+
+            Entity chunkPrefab = chunkPrefabs[0];
+            chunkPrefabs.Dispose();
+
+            ChunkParent prefabChunkComponent = GetComponent<ChunkParent>(chunkPrefab);
+            int2 camGridPosition = WorldToGridSpace(cam.transform.position, prefabChunkComponent.grid);
+
+            var ecb = ecbSystem.CreateCommandBuffer().AsParallelWriter();
+
+            Entities.
+            WithAll<ChunkComponent, VoxelTerrainChunkRenderTag>().
+            WithNone<Disabled>().
+            ForEach((int entityInQueryIndex, Entity e, in ChunkComponent chunk) => {
+                if (math.distance(camGridPosition, chunk.gridPosition) <= radius) {return;}
+
+                ecb.AddComponent<Disabled>(entityInQueryIndex, e);
+            }).ScheduleParallel();
+
+            Entities.
+            WithAll<ChunkComponent, VoxelTerrainChunkRenderTag, Disabled>().
+            ForEach((int entityInQueryIndex, Entity e, in ChunkComponent chunk) => {
+                if (math.distance(camGridPosition, chunk.gridPosition) > radius) {return;}
+
+                ecb.RemoveComponent<Disabled>(entityInQueryIndex, e);
+            }).ScheduleParallel();
+
+            ecbSystem.AddJobHandleForProducer(Dependency);
+        }
+
+    }
     
 
     [BurstCompile]
@@ -377,7 +454,7 @@ namespace VoxelTerrain.ECS.Systems
             //allChunks.Dispose();
             //allChunkEntities.Dispose();
             var ecb1 = ecbSystem.CreateCommandBuffer().AsParallelWriter();
-
+            int chunkCount = 0;
             Entities.
             WithAll<ChunkParent>().
             WithNone<Prefab, VoxelTerrainChunkInitializedTag>().
@@ -385,7 +462,7 @@ namespace VoxelTerrain.ECS.Systems
             WithReadOnly(allChunks).
             WithBurst().
             ForEach((int entityInQueryIndex, Entity e, in ChunkParent chunkParent) => {
-                if (math.distance(chunkParent.gridPosition, camGridPosition) > radius || entityInQueryIndex > 10) {return;}
+                if (math.distance(chunkParent.gridPosition, camGridPosition) > radius || chunkCount > 5) {return;}
 
                 for (int y = -1; y <= 1; y++) {
                     for (int x = -1; x <= 1; x++) {
@@ -400,6 +477,8 @@ namespace VoxelTerrain.ECS.Systems
                             }
                         }
                         if (exists) {continue;}
+
+                        chunkCount++;
 
                         ChunkParent newChunkParent = new ChunkParent
                         {
@@ -433,13 +512,15 @@ namespace VoxelTerrain.ECS.Systems
             var ecb2 = ecbSystem.CreateCommandBuffer().AsParallelWriter();
             EntityArchetype voxelArchetype = EntityManager.CreateArchetype(
                 typeof(VoxelComponent),
-                ComponentType.ChunkComponent<VoxelTerrainVoxelInitializedTag>()
+                typeof(VoxelTerrainVoxelInitializedTag)
             );
 
+            int chunkComponentCount = 0;
             Entities.
             WithNone<VoxelTerrainChunkInitializedTag>().WithAll<VoxelTerrainChunkNewTag>().
             WithBurst().
             ForEach((int entityInQueryIndex, Entity e, in ChunkComponent terrainChunk) => {
+                if (math.distance(terrainChunk.gridPosition, camGridPosition) > radius || chunkComponentCount > 15) {return;}
                 for (int y = 0; y < terrainChunk.grid.chunkSize; y++) {
                     for (int x = 0; x < terrainChunk.grid.chunkSize; x++) {
                         VoxelComponent voxel = new VoxelComponent() {
@@ -455,6 +536,7 @@ namespace VoxelTerrain.ECS.Systems
                         ecb2.AppendToBuffer<VoxelTerrainChunkVoxelBufferElement>(entityInQueryIndex, e, voxelEntity);
                     }                    
                 }
+                chunkComponentCount++;
                 ecb2.AddComponent(entityInQueryIndex, e, new VoxelTerrainChunkInitializedTag());
             }).ScheduleParallel();
 
@@ -471,53 +553,88 @@ namespace VoxelTerrain.ECS.Systems
         protected Biome[] terrainBiomes;
         protected EndSimulationEntityCommandBufferSystem ecbSystem;
 
-        private float3 camPosition;
+        private Camera cam;
+
+        Unity.Mathematics.Random rand;
+        int2 randomOffset;
+
+        private int2 WorldToGridSpace(Vector3 position, Grid grid)
+        {
+            int vx = (int) math.floor(position.x * grid.voxelSize);
+            int vy = (int) math.floor(position.z * grid.voxelSize);
+            return new int2(
+                vx / grid.chunkSize,
+                vy / grid.chunkSize
+            );
+        }
 
         [BurstCompile]
         protected override void OnCreate()
         {
             defaultWorld = World.DefaultGameObjectInjectionWorld;
             entityManager = defaultWorld.EntityManager;    
-            ecbSystem = defaultWorld.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();        
+            ecbSystem = defaultWorld.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
         [BurstCompile]
         protected override void OnStartRunning()
         {
-            terrainBiomes = new Biome[TerrainManager.instance.terrainSettings.biomes.Count];
-            camPosition = Camera.main.transform.position;
+            cam = Camera.main;
 
+            terrainBiomes = new Biome[TerrainManager.instance.terrainSettings.biomes.Count];
+            
             for (int i = 0; i < TerrainManager.instance.terrainSettings.biomes.Count; i++)
             {
                 terrainBiomes[i] = TerrainManager.instance.terrainSettings.biomes[i];
             }
+
+            rand = new Unity.Mathematics.Random((uint) TerrainManager.instance.terrainSettings.seed);
+            randomOffset = rand.NextInt2(new int2(int.MinValue, int.MinValue)/2000, new int2(int.MaxValue, int.MaxValue)/2000);
         }
         
         [BurstCompile]
         protected override void OnUpdate() {
+            float radius = TerrainManager.instance.terrainSettings.renderDistance;
+
+            Profiler.BeginSample("Get Prefab");
+            EntityQuery allChunkPrefabsQuery = GetEntityQuery(
+                new EntityQueryDesc{
+                    All = new ComponentType[] {typeof(Prefab), typeof(ChunkParent)}
+                }
+            );
+            if (allChunkPrefabsQuery.CalculateEntityCount() == 0) {return;}
+
+            var chunkPrefabs = allChunkPrefabsQuery.ToEntityArray(Allocator.Temp);
+
+            Entity chunkPrefab = chunkPrefabs[0];
+            chunkPrefabs.Dispose();
+
+            ChunkParent prefabChunkComponent = GetComponent<ChunkParent>(chunkPrefab);
+            Profiler.EndSample();
+
+            int2 camGridPosition = WorldToGridSpace(cam.transform.position, prefabChunkComponent.grid);
+
             NativeArray<Biome> biomes = new NativeArray<Biome>(terrainBiomes, Allocator.TempJob);
             ClimateSettings climateSettings = TerrainManager.instance.terrainSettings;
-            // float renderDistance = TerrainManager.instance.terrainSettings.renderDistance;
-            camPosition.y = 0;
-
-            float3 currentCamPosition = new float3(camPosition);
 
             var ecb = ecbSystem.CreateCommandBuffer().AsParallelWriter();
 
+            Profiler.BeginSample("Generate Filter");
             EntityQuery generating = GetEntityQuery(
                 new EntityQueryDesc() {
-                    All = new ComponentType[] {ComponentType.ChunkComponent<VoxelTerrainVoxelInitializedTag>()},
-                    None = new ComponentType[] {ComponentType.ChunkComponent<VoxelTerrainVoxelGeneratedTag>()}
+                    All = new ComponentType[] {typeof(VoxelComponent), typeof(VoxelTerrainVoxelInitializedTag)},
+                    None = new ComponentType[] {typeof(VoxelTerrainVoxelGeneratedTag)}
                 }
             );
+            Profiler.EndSample();
 
-            NativeArray<Entity> filter = generating.ToEntityArray(Allocator.TempJob);
-            //ProfilerMarker generateMarker = new ProfilerMarker("Generate Voxel Data");
+            int2 localRandomOffset = randomOffset;
 
             Entities.
             WithReadOnly(biomes).
             WithDisposeOnCompletion(biomes).
-            WithFilter(filter).
+            WithAll<VoxelComponent,VoxelTerrainVoxelInitializedTag>().
+            WithNone<VoxelTerrainVoxelGeneratedTag>().
             WithBurst().
             ForEach((Entity e, int entityInQueryIndex, ref VoxelComponent voxel) => {
                 //generateMarker.Begin();
@@ -528,57 +645,62 @@ namespace VoxelTerrain.ECS.Systems
 
                 TerrainNoise.GetDataAtPoint(
                     biomes, voxel.position.x, voxel.position.z, voxel.chunkComponent.gridPosition, voxel.chunkComponent.grid.chunkSize, voxel.chunkComponent.grid.voxelSize,
-                    climateSettings, out voxel.normal, out voxel.position.y, out voxel.climate, out voxel.terrainColor
+                    climateSettings, out voxel.normal, out voxel.position.y, out voxel.climate, out voxel.terrainColor, localRandomOffset
                 );
 
                 if (voxel.position.x == chunkSize -1) {
                     TerrainNoise.GetDataAtPoint(
                         biomes, voxel.position.x + 1, voxel.position.z, voxel.chunkComponent.gridPosition, voxel.chunkComponent.grid.chunkSize, voxel.chunkComponent.grid.voxelSize,
-                        climateSettings, out voxel.rightNormal, out voxel.rightPosition.y, out voxel.rightClimate, out voxel.rightColor
+                        climateSettings, out voxel.rightNormal, out voxel.rightPosition.y, out voxel.rightClimate, out voxel.rightColor, localRandomOffset
                     );
                 }
 
                 if (voxel.position.z == chunkSize -1) {
                     TerrainNoise.GetDataAtPoint(
                         biomes, voxel.position.x, voxel.position.z + 1, voxel.chunkComponent.gridPosition, voxel.chunkComponent.grid.chunkSize, voxel.chunkComponent.grid.voxelSize,
-                        climateSettings, out voxel.topNormal, out voxel.topPosition.y, out voxel.topClimate, out voxel.topColor
+                        climateSettings, out voxel.topNormal, out voxel.topPosition.y, out voxel.topClimate, out voxel.topColor, localRandomOffset
                     );
                 }
 
                 if (voxel.position.z == chunkSize -1 && voxel.position.x == chunkSize -1) {
                     TerrainNoise.GetDataAtPoint(
                         biomes, voxel.position.x + 1, voxel.position.z + 1, voxel.chunkComponent.gridPosition, voxel.chunkComponent.grid.chunkSize, voxel.chunkComponent.grid.voxelSize,
-                        climateSettings, out voxel.topRightNormal, out voxel.topRightPosition.y, out voxel.topRightClimate, out voxel.topRightColor
+                        climateSettings, out voxel.topRightNormal, out voxel.topRightPosition.y, out voxel.topRightClimate, out voxel.topRightColor, localRandomOffset
                     );
                 }
                 
-
-                ecb.AddComponent(entityInQueryIndex, voxel.chunk, new VoxelTerrainChunkGeneratedTag());
+                ecb.AddComponent<VoxelTerrainVoxelGeneratedTag>(entityInQueryIndex, e);
+                ecb.AddComponent<VoxelTerrainChunkGeneratedTag>(entityInQueryIndex, voxel.chunk);
                 //generateMarker.End();
             }).ScheduleParallel();
-            filter.Dispose();
+            // filter.Dispose();
 
             ecbSystem.AddJobHandleForProducer(Dependency);
-
-            entityManager.AddChunkComponentData(generating, new VoxelTerrainVoxelGeneratedTag());
         }
     }
 
     //[DisableAutoCreation]
     [BurstCompile]
+    //[AlwaysUpdateSystem]
     [UpdateInGroup(typeof(PresentationSystemGroup))]
     [UpdateAfter(typeof(SetVoxelTerrainDataSystem))]
     public partial class GenerateVoxelTerrainMeshSystem : SystemBase {
+        public Mesh.MeshDataArray generatedMeshData;
+        public NativeArray<Entity> chunksToRender = new NativeArray<Entity>(0, Allocator.Persistent);
+        
         protected World defaultWorld;
         protected EntityManager entityManager;
         protected BeginInitializationEntityCommandBufferSystem ecbSystem;
 
-        public struct RawMeshData {
-            public NativeArray<float3> verts;
-            public NativeArray<int> tris;
-            public NativeArray<float3> normal;
-            public NativeArray<float2> uv0;
-            public NativeArray<float2> uv1;
+        EntityQuery chunksReadyToRenderQuery;
+
+        public struct vert {
+            public float3 pos;
+            public float3 norm;
+            public Color32 color;
+            public float2 uv0;
+            public float2 uv1;
+            public float2 uv2;
         }
 
         [BurstCompile]
@@ -589,36 +711,60 @@ namespace VoxelTerrain.ECS.Systems
             ecbSystem = defaultWorld.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
         }
 
+        protected override void OnDestroy()
+        {
+            Debug.LogError("Destroyed!");
+            chunksToRender.Dispose();
+        }
+
         [BurstCompile]
         protected override void OnUpdate() {
-            var ecb = ecbSystem.CreateCommandBuffer();
-            // Create entity query for chunks that are ready for a mesh
-            // Create an empty native dictionary where the key is an entity, and the value is an empty RawMeshData
-            EntityQuery chunksReadyToRenderQuery = GetEntityQuery(
+            chunksReadyToRenderQuery = GetEntityQuery(
                 new EntityQueryDesc() {
-                    All = new ComponentType[] {typeof(VoxelTerrainChunkGeneratedTag)},
+                    All = new ComponentType[] {typeof(VoxelTerrainChunkGeneratedTag), typeof(ChunkComponent)},
                     None = new ComponentType[] {typeof(VoxelTerrainChunkRenderTag)}
                 }
             );
-            //NativeArray<Entity> chunksReadyToRender = chunksReadyToRenderQuery.ToEntityArray(Allocator.TempJob);
+            if (chunksReadyToRenderQuery.CalculateEntityCount() == 0) {return;}
+            generatedMeshData = Mesh.AllocateWritableMeshData(chunksReadyToRenderQuery.CalculateEntityCount());
+            
+            chunksToRender = chunksReadyToRenderQuery.ToEntityArray(Allocator.Persistent);
+
+            var meshDataArray = generatedMeshData;
+            if (generatedMeshData.Length == 0) {return;}
+            var ecb = ecbSystem.CreateCommandBuffer().AsParallelWriter();
+
+            for (int i = 0; i < meshDataArray.Length; i++) {
+                meshDataArray[i].SetVertexBufferParams(
+                    289,
+                    new VertexAttributeDescriptor(VertexAttribute.Position),
+                    new VertexAttributeDescriptor(VertexAttribute.Normal),
+                    new VertexAttributeDescriptor(VertexAttribute.Color, VertexAttributeFormat.UNorm8, 4),
+                    new VertexAttributeDescriptor(VertexAttribute.TexCoord0, dimension:2),
+                    new VertexAttributeDescriptor(VertexAttribute.TexCoord1, dimension:2),
+                    new VertexAttributeDescriptor(VertexAttribute.TexCoord2, dimension:2)
+                );
+            }
 
             Entities.
             WithAll<VoxelTerrainChunkGeneratedTag>().
             WithNone<VoxelTerrainChunkRenderTag>().
-            WithoutBurst().
-            ForEach((Entity e, int entityInQueryIndex, RenderMesh renderMesh, in ChunkComponent chunkComponent, in DynamicBuffer<VoxelTerrainChunkVoxelBufferElement> voxelEntities) => {
+            WithBurst().
+            ForEach((Entity e, int entityInQueryIndex, ref RenderBounds bounds, in ChunkComponent chunkComponent, in DynamicBuffer<VoxelTerrainChunkVoxelBufferElement> voxelEntities) => {
                 int elementSize = ((chunkComponent.grid.chunkSize + 1) * (chunkComponent.grid.chunkSize + 1));
-                
-                NativeArray<float3> verts = new NativeArray<float3>(elementSize, Allocator.TempJob);
-                NativeArray<int> indecies = new NativeArray<int>(elementSize * 6, Allocator.TempJob);
-                NativeArray<float3> normals = new NativeArray<float3>(elementSize, Allocator.TempJob);
-                NativeArray<Color> colors = new NativeArray<Color>(elementSize, Allocator.TempJob);
-                NativeArray<float2> uv0 = new NativeArray<float2>(elementSize, Allocator.TempJob);
-                NativeArray<float2> uv1 = new NativeArray<float2>(elementSize, Allocator.TempJob);
-                NativeArray<float2> uv2 = new NativeArray<float2>(elementSize, Allocator.TempJob);
 
                 int vertIndex = 0;
+                var data = meshDataArray[entityInQueryIndex];
+                var verts = data.GetVertexData<vert>();
 
+                float highest = 0;
+                float lowest = 0;
+
+                data.subMeshCount = 1;
+                data.SetIndexBufferParams(elementSize * 6, IndexFormat.UInt32);
+                var indecies = data.GetIndexData<int>();
+                for(int i = 0; i < indecies.Length; i++) {indecies[i] = 0;}
+                
                 for (int i = 0; i < voxelEntities.Length; i++) {
                     VoxelComponent voxel = GetComponent<VoxelComponent>(voxelEntities[i]);
 
@@ -626,12 +772,19 @@ namespace VoxelTerrain.ECS.Systems
                     int y = i / chunkSize;
                     int x = i % chunkSize;
 
-                    verts[vertIndex] = voxel.position * new float3(chunkComponent.grid.voxelSize, 1, chunkComponent.grid.voxelSize);
-                    normals[vertIndex] = voxel.normal;
-                    colors[vertIndex] = voxel.terrainColor;
-                    uv0[vertIndex] = new float2(x, y);
-                    uv1[vertIndex] = new float2(voxel.position.x / chunkSize, voxel.position.z / chunkSize);
-                    uv2[vertIndex] = voxel.climate;
+                    vert vert = new vert();
+
+                    vert.pos = voxel.position * new float3(chunkComponent.grid.voxelSize, 1, chunkComponent.grid.voxelSize);
+                    vert.norm = voxel.normal;
+                    vert.color = voxel.terrainColor;
+                    vert.uv0 = new float2(x, y);
+                    vert.uv1 = new float2(voxel.position.x / chunkSize, voxel.position.z / chunkSize);
+                    vert.uv2 = voxel.climate;
+
+                    if (vert.pos.y > highest) {highest = vert.pos.y;}
+                    if (vert.pos.y < lowest) {lowest = vert.pos.y;}
+
+                    verts[vertIndex] = vert;
 
                     int triStart = (i * 6);
 
@@ -645,61 +798,133 @@ namespace VoxelTerrain.ECS.Systems
                     vertIndex++;
 
                     if (y == (chunkSize -1)) {
+                        vert nVert = new vert();
                         int index = vertIndex + chunkSize;
-                        verts[index] = voxel.topPosition * new float3(chunkComponent.grid.voxelSize, 1, chunkComponent.grid.voxelSize);
-                        normals[index] = voxel.topNormal;
-                        colors[index] = voxel.topColor;
-                        uv0[index] = new float2(x, chunkSize);
-                        uv1[index] = new float2(voxel.position.x / chunkSize, 1);
-                        uv2[index] = voxel.topClimate;
+                        nVert.pos = voxel.topPosition * new float3(chunkComponent.grid.voxelSize, 1, chunkComponent.grid.voxelSize);
+                        nVert.norm = voxel.topNormal;
+                        nVert.color = voxel.topColor;
+                        nVert.uv0 = new float2(x, chunkSize);
+                        nVert.uv1 = new float2(voxel.position.x / chunkSize, 1);
+                        nVert.uv2 = voxel.topClimate;
+
+                        if (nVert.pos.y > highest) {highest = nVert.pos.y;}
+                        if (nVert.pos.y < lowest) {lowest = nVert.pos.y;}
+
+                        verts[index] = nVert;
                     }
 
                     if (x == (chunkSize - 1) && y == (chunkSize - 1)) {
+                        vert nVert = new vert();
                         int index = vertIndex + chunkSize + 1;
-                        verts[index] = voxel.topRightPosition;
-                        normals[index] = voxel.topRightNormal;
-                        colors[index] = voxel.topRightColor;
-                        uv0[index] = new float2(chunkSize, chunkSize);
-                        uv1[index] = new float2(1, 1);
-                        uv2[index] = voxel.topRightClimate;
+                        nVert.pos = voxel.topRightPosition;
+                        nVert.norm = voxel.topRightNormal;
+                        nVert.color = voxel.topRightColor;
+                        nVert.uv0 = new float2(chunkSize, chunkSize);
+                        nVert.uv1 = new float2(1, 1);
+                        nVert.uv2 = voxel.topRightClimate;
+
+                        if (nVert.pos.y > highest) {highest = nVert.pos.y;}
+                        if (nVert.pos.y < lowest) {lowest = nVert.pos.y;}
+
+                        verts[index] = nVert;
                     }
 
                     if (x == (chunkSize -1)) {
-                        verts[vertIndex] = voxel.rightPosition * new float3(chunkComponent.grid.voxelSize, 1, chunkComponent.grid.voxelSize);
-                        normals[vertIndex] = voxel.rightNormal;
-                        colors[vertIndex] = voxel.rightColor;
-                        uv0[vertIndex] = new float2(chunkSize, y);
-                        uv1[vertIndex] = new float2(1, voxel.position.z / chunkSize);
-                        uv2[vertIndex] = voxel.rightClimate;
+                        vert nVert = new vert();
+                        nVert.pos = voxel.rightPosition * new float3(chunkComponent.grid.voxelSize, 1, chunkComponent.grid.voxelSize);
+                        nVert.norm = voxel.rightNormal;
+                        nVert.color = voxel.rightColor;
+                        nVert.uv0 = new float2(chunkSize, y);
+                        nVert.uv1 = new float2(1, voxel.position.z / chunkSize);
+                        nVert.uv2 = voxel.rightClimate;
+
+                        if (nVert.pos.y > highest) {highest = nVert.pos.y;}
+                        if (nVert.pos.y < lowest) {lowest = nVert.pos.y;}
+
+                        verts[vertIndex] = nVert;
 
                         vertIndex++;
                     }
                 }
 
-                renderMesh.mesh = new Mesh();
-                renderMesh.mesh.name = $"Chunk Mesh: {chunkComponent.gridPosition}";
-                renderMesh.mesh.SetVertices(verts);
-                renderMesh.mesh.SetNormals(normals);
-                renderMesh.mesh.SetColors(colors);
-                renderMesh.mesh.SetUVs(0, uv0);
-                renderMesh.mesh.SetUVs(1, uv1);
-                renderMesh.mesh.SetUVs(2, uv2);
-                renderMesh.mesh.SetIndexBufferParams(indecies.Length, IndexFormat.UInt32);
-                renderMesh.mesh.SetIndexBufferData(indecies, 0, 0, indecies.Length);
-                renderMesh.mesh.SetSubMesh(0, new SubMeshDescriptor(0, indecies.Length));
+                float height = highest - lowest;
 
-                ecb.SetSharedComponent<RenderMesh>(e, renderMesh);
-                ecb.AddComponent<VoxelTerrainChunkRenderTag>(e);
-                ecb.RemoveComponent<DisableRendering>(e);
+                bounds.Value = new AABB();
+                bounds.Value.Center = float3.zero;
+                bounds.Value.Extents = new float3(
+                    (chunkComponent.grid.chunkSize * chunkComponent.grid.voxelSize) / 2,
+                    500,
+                    (chunkComponent.grid.chunkSize * chunkComponent.grid.voxelSize) / 2
+                );
 
-                verts.Dispose();
-                indecies.Dispose();
-                normals.Dispose();
-                colors.Dispose();
-                uv0.Dispose();
-                uv1.Dispose();
-                uv2.Dispose();
-            }).Run();
+                data.SetSubMesh(0, new SubMeshDescriptor(0, elementSize * 6));
+                ecb.AddComponent<VoxelTerrainChunkRenderTag>(entityInQueryIndex, e);
+                
+            }).ScheduleParallel();
+
+            ecbSystem.AddJobHandleForProducer(Dependency);
+        }
+    }
+
+
+    //[DisableAutoCreation]
+    [BurstCompile]
+    [AlwaysUpdateSystem]
+    [UpdateAfter(typeof(BeginInitializationEntityCommandBufferSystem))]
+    [UpdateBefore(typeof(EndInitializationEntityCommandBufferSystem))]
+    public partial class RenderVoxelTerrainChunkSystem : SystemBase {
+        protected World defaultWorld;
+        protected EntityManager entityManager;
+
+        EntityQuery chunksReadyToRenderQuery;
+        GenerateVoxelTerrainMeshSystem meshSystem;
+        EndInitializationEntityCommandBufferSystem ecbSystem;
+
+        protected override void OnCreate()
+        {
+            defaultWorld = World.DefaultGameObjectInjectionWorld;
+            entityManager = defaultWorld.EntityManager;
+            meshSystem = defaultWorld.GetOrCreateSystem<GenerateVoxelTerrainMeshSystem>();
+            ecbSystem = defaultWorld.GetOrCreateSystem<EndInitializationEntityCommandBufferSystem>();
+        }
+
+        [BurstCompile]
+        protected override void OnStartRunning() {
+            chunksReadyToRenderQuery = GetEntityQuery(
+                new EntityQueryDesc() {
+                    All = new ComponentType[] {typeof(VoxelTerrainChunkRenderTag), typeof(ChunkComponent), typeof(DisableRendering)},
+                }
+            );
+        }
+
+        protected override void OnUpdate() {
+            var meshDataArray = meshSystem.generatedMeshData;
+            if (!meshSystem.chunksToRender.IsCreated) {return;}
+            else if (meshSystem.chunksToRender.Length == 0) {
+                try {
+                    meshDataArray.Dispose();
+                }
+                catch {}
+                    meshSystem.chunksToRender.Dispose();
+                
+                return;
+            }
+            var ecb = ecbSystem.CreateCommandBuffer();
+
+            List<Mesh> meshes = new List<Mesh>();
+
+            foreach(var entity in meshSystem.chunksToRender) {
+                Mesh mesh = new Mesh();
+                RenderMesh renderMesh = entityManager.GetSharedComponentData<RenderMesh>(entity);
+                renderMesh.mesh = mesh;
+                ecb.SetSharedComponent<RenderMesh>(entity, renderMesh);
+                meshes.Add(mesh);
+            }
+
+            meshSystem.chunksToRender.Dispose();
+            Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, meshes);
+
+            //foreach(Mesh mesh in meshes) {mesh.RecalculateNormals();}
 
             ecbSystem.AddJobHandleForProducer(Dependency);
         }

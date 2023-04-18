@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Mountain
   m_EditorClassIdentifier: 
   color: {r: 0.7045581, g: 0.7075472, b: 0.34376115, a: 1}
-  maxTemperature: 0.68
-  minTemperature: 0.31
-  maxMoisture: 0.68
-  minMoisture: 0.31
+  maxTemperature: 0.866
+  minTemperature: 0.237
+  maxMoisture: 0.827
+  minMoisture: 0.227
   heightNormalIntensity: 1
   minTerrainHeight: -70
   maxTerrainHeight: 350

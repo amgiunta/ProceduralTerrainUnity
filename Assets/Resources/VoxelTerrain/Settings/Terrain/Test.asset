@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fb4aea107129c854eabf6d41b9cfb755, type: 3}
   m_Name: Test
   m_EditorClassIdentifier: 
-  seed: 164
+  seed: 16508
   worldName: NewWorld
   grid:
     voxelSize: 1
@@ -31,15 +31,15 @@ MonoBehaviour:
     x: 16820
     y: 15020
   temperatureOffset:
-    x: 4654
-    y: 687
+    x: 1216454
+    y: 98754
   voxelVertecies: 4
   voxelTris: 2
   minMoisture: 0
   maxMoisture: 1
   moistureLancunarity: 1.05456
   moisturePersistance: 0.36
-  moistureOctaves: 3
+  moistureOctaves: 2
   moistureScale:
     x: 12150
     y: 12680

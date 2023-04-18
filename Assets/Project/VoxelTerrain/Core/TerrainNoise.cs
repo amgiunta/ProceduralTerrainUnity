@@ -57,7 +57,7 @@ namespace VoxelTerrain
 
                 float2 sample = (new float2(x, y) + octOffset) / (scale) * frequency;
 
-                float3 perlinValue = noise.srdnoise(sample, rotationDegrees);
+                float3 perlinValue = noise.snoise(sample);
                 noiseHeight += perlinValue.x * amplitude;
                 dx += perlinValue.y * amplitude;
                 dy += perlinValue.z * amplitude;
@@ -176,12 +176,12 @@ namespace VoxelTerrain
 
         public static void GetDataAtPoint( 
             in NativeArray<Biome> biomes, float x, float y, float2 chunkPosition, int chunkWidth, float voxelSize,
-            ClimateSettings climateSettings,
-            out float3 normal, out float height, out float2 climate, out Color color
+            ClimateSettings climateSettings,            
+            out float3 normal, out float height, out float2 climate, out Color color, int2 offset = default
         ) {
             //ProfilerMarker dataMarker = new ProfilerMarker("Getting Voxel Data");
             //dataMarker.Begin();
-            climate = Climate(x, y, climateSettings, chunkPosition, chunkWidth, voxelSize);
+            climate = Climate(x, y, climateSettings, chunkPosition + offset, chunkWidth, voxelSize);
 
             float totalHeight = 0;
             float totalDx = 0;
@@ -195,7 +195,7 @@ namespace VoxelTerrain
                 float ndx; float ndy;
 
                 float3 noise = new float3(
-                    Noise(x, y, biome.persistance, biome.lancunarity, out ndx, out ndy, chunkPosition * chunkWidth, biome.generatorNoiseScale / voxelSize, biome.octaves, biome.noiseRotation),
+                    Noise(x, y, biome.persistance, biome.lancunarity, out ndx, out ndy, (chunkPosition + (float2) offset) * chunkWidth, biome.generatorNoiseScale / voxelSize, biome.octaves, biome.noiseRotation),
                     ndx, ndy
                 );
                 height = math.remap(0, 1, biome.minTerrainHeight, biome.maxTerrainHeight, noise.x);
