@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fb4aea107129c854eabf6d41b9cfb755, type: 3}
   m_Name: Test
   m_EditorClassIdentifier: 
-  seed: 16508
+  seed: 12324654
   worldName: NewWorld
   grid:
     voxelSize: 1

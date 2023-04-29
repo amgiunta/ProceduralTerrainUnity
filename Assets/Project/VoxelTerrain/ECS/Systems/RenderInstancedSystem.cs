@@ -12,6 +12,7 @@ using VoxelTerrain.ECS.Components;
 
 namespace VoxelTerrain.ECS.Systems
 {
+    [DisableAutoCreation]
     [UpdateInGroup(typeof(PresentationSystemGroup), OrderLast = true)]
     [UpdateAfter(typeof(GenerateVoxelTerrainMeshSystem))]
     [UpdateAfter(typeof(GroundScatterMoveSystem))]

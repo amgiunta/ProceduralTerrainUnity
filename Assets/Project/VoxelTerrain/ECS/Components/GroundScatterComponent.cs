@@ -9,6 +9,7 @@ namespace VoxelTerrain.ECS.Components
     [GenerateAuthoringComponent]
     public struct GroundScatter: IComponentData {
         public float scatterDensity;
+        public int scatterIndex;
         [Range(0, 1)] public float heartiness;
         [Range(0, 1)] public float minTemperature;
         [Range(0, 1)] public float maxTemperature;
@@ -17,6 +18,7 @@ namespace VoxelTerrain.ECS.Components
         public float maxHeight;
         public float minHeight;
         public float3 offset;
+        public float3 chunkPosition;
         [Range(0, 1)] public float jitterFactor;
         public ChunkComponent chunk;
         public Entity ChunkEntity;

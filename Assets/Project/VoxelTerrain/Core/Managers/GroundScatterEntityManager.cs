@@ -31,7 +31,7 @@ namespace VoxelTerrain
                     dstManager.SetComponentData(prefabEntity, new Scale { Value = prefabGo.transform.localScale.x});
 
                     dstManager.AddComponent<VoxelTerrainGroundScatterNewTag>(prefabEntity);
-                    dstManager.AddComponent<DisableRendering>(prefabEntity);
+                    //dstManager.AddComponent<DisableRendering>(prefabEntity);
 
                     if (!dstManager.HasComponent<RotationConstraints>(prefabEntity)) {
                         dstManager.AddComponent<RotationConstraints>(prefabEntity);

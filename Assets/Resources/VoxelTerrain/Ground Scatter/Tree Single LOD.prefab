@@ -128,6 +128,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   scatterDensity: 10
+  scatterIndex: 0
   heartiness: 0.695
   minTemperature: 0
   maxTemperature: 1
@@ -139,7 +140,12 @@ MonoBehaviour:
     x: 0
     y: 0.5
     z: 0
+  chunkPosition:
+    x: 0
+    y: 0
+    z: 0
   jitterFactor: 1
+  ChunkEntity: {fileID: 0}
 --- !u!114 &9052694362729800179
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -169,7 +175,7 @@ LODGroup:
   m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
-  - screenRelativeHeight: 0.08568886
+  - screenRelativeHeight: 0.038239356
     fadeTransitionWidth: 0
     renderers:
     - renderer: {fileID: 7032867721589971031}
