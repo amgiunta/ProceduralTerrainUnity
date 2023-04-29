@@ -157,8 +157,8 @@ namespace VoxelTerrain.ECS.Systems {
 
                 float3 position = voxel.position + scatter.chunkPosition;
                 position += localRandom.NextFloat3(
-                    new float3(-scatter.jitterFactor, 0, -scatter.jitterFactor) * scatter.chunk.grid.voxelSize,
-                    new float3(scatter.jitterFactor, 0, scatter.jitterFactor) * scatter.chunk.grid.voxelSize
+                    new float3(-scatter.jitterFactor, 0, -scatter.jitterFactor) * (chunkWidth / scatter.scatterDensity),
+                    new float3(scatter.jitterFactor, 0, scatter.jitterFactor) * (chunkWidth / scatter.scatterDensity)
                 );
                 position += scatter.offset;
 

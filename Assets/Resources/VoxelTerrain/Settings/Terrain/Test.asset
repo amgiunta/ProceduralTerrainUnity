@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fb4aea107129c854eabf6d41b9cfb755, type: 3}
   m_Name: Test
   m_EditorClassIdentifier: 
-  seed: 12324654
+  seed: 45
   worldName: NewWorld
   grid:
     voxelSize: 1
@@ -22,7 +22,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3cbd3928c9191024e8f2dfea29194299, type: 2}
   - {fileID: 11400000, guid: 4e029813ac218524ab0df8f436e82dcc, type: 2}
   renderDistance: 50
-  minTemperature: 0
+  minTemperature: 0.356
   maxTemperature: 1
   temperatureLancunarity: 1.18
   temperaturePersistance: 0.6
