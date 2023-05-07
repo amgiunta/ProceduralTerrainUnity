@@ -12,12 +12,14 @@ using RTSCamera.Input;
 
 namespace RTSCamera.Systems
 {
+    [BurstCompile]
+    [UpdateInGroup(typeof(InitializationSystemGroup))]
     public partial class RTSInputComponentUpdateSystem : SystemBase
     {
         private RTSInput input;
         private RTSInput.GameActions gameActions;
 
-        private BeginInitializationEntityCommandBufferSystem beginInitializationEntityCommandBufferSystem;
+        private EndInitializationEntityCommandBufferSystem ecbSystem;
         private World defaultWorld;
         private EntityManager entityManager;
 
@@ -31,12 +33,12 @@ namespace RTSCamera.Systems
 
             defaultWorld = World.DefaultGameObjectInjectionWorld;
             entityManager = defaultWorld.EntityManager;
-            beginInitializationEntityCommandBufferSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
+            ecbSystem = World.GetOrCreateSystem<EndInitializationEntityCommandBufferSystem>();
         }
 
         protected override void OnUpdate()
         {
-            var attributeBuffer = beginInitializationEntityCommandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+            var attributeBuffer = ecbSystem.CreateCommandBuffer().AsParallelWriter();
 
 
             NativeList<JobHandle> dependancies = new NativeList<JobHandle>(0, Allocator.Temp);
@@ -103,14 +105,15 @@ namespace RTSCamera.Systems
             dependancies.Add(zoomJob);
 
             Dependency = JobHandle.CombineDependencies(dependancies);
-            beginInitializationEntityCommandBufferSystem.AddJobHandleForProducer(Dependency);
+            ecbSystem.AddJobHandleForProducer(Dependency);
         }
     }
 
-    [UpdateAfter(typeof(RTSInputComponentUpdateSystem))]
+    [BurstCompile]
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public partial class RTSInputReactionSystem : SystemBase {
 
-        private BeginSimulationEntityCommandBufferSystem beginSimulationEntityCommandBufferSystem;
+        private EndSimulationEntityCommandBufferSystem ecbSystem;
         private World defaultWorld;
         private EntityManager entityManager;
 
@@ -120,13 +123,13 @@ namespace RTSCamera.Systems
             defaultWorld = World.DefaultGameObjectInjectionWorld;
             entityManager = defaultWorld.EntityManager;
 
-            beginSimulationEntityCommandBufferSystem = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+            ecbSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
         protected override void OnUpdate()
         {
             base.OnCreate();
-            var simEcb = beginSimulationEntityCommandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+            var simEcb = ecbSystem.CreateCommandBuffer().AsParallelWriter();
 
             float deltaTime = Time.DeltaTime;
             Entity camEntity = GetSingletonEntity<RTSInputPointer>();
@@ -191,7 +194,7 @@ namespace RTSCamera.Systems
                 translation.Value = math.lerp(translation.Value, new float3(translation.Value.x, targetHeight, translation.Value.z), attributes.zoomSensetivity * deltaTime * attributes.dampening);
             }).ScheduleParallel();
 
-            beginSimulationEntityCommandBufferSystem.AddJobHandleForProducer(Dependency);
+            ecbSystem.AddJobHandleForProducer(Dependency);
         }
     }
 }

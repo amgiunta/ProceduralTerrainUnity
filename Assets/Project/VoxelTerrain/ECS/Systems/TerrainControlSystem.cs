@@ -133,12 +133,12 @@ namespace VoxelTerrain.ECS.Systems
 
     [BurstCompile]
     [AlwaysUpdateSystem]
-    [UpdateInGroup(typeof(InitializationSystemGroup))]
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateBefore(typeof(SpawnVoxelTerrainChunkSystemV2))]
     public partial class EnableDisableVoxelTerrainSystem : SystemBase {
         protected World defaultWorld;
         protected EntityManager entityManager;
-        protected EndInitializationEntityCommandBufferSystem ecbSystem;
+        protected EndSimulationEntityCommandBufferSystem ecbSystem;
 
         private Camera cam;
 
@@ -157,7 +157,7 @@ namespace VoxelTerrain.ECS.Systems
         {
             defaultWorld = World.DefaultGameObjectInjectionWorld;
             entityManager = defaultWorld.EntityManager;
-            ecbSystem = World.GetOrCreateSystem<EndInitializationEntityCommandBufferSystem>();
+            ecbSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
         [BurstCompile]
@@ -211,12 +211,12 @@ namespace VoxelTerrain.ECS.Systems
 
     [BurstCompile]
     [AlwaysUpdateSystem]
-    [UpdateInGroup(typeof(InitializationSystemGroup), OrderFirst = true, OrderLast = false)]
-    [UpdateAfter(typeof(BeginInitializationEntityCommandBufferSystem))]
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateAfter(typeof(TransformSystemGroup))]
     public partial class SpawnVoxelTerrainChunkSystemV2 : SystemBase {
         protected World defaultWorld;
         protected EntityManager entityManager;
-        protected EndInitializationEntityCommandBufferSystem ecbSystem;
+        protected EndSimulationEntityCommandBufferSystem ecbSystem;
 
         private Camera cam;
 
@@ -235,7 +235,7 @@ namespace VoxelTerrain.ECS.Systems
         {
             defaultWorld = World.DefaultGameObjectInjectionWorld;
             entityManager = defaultWorld.EntityManager;
-            ecbSystem = World.GetOrCreateSystem<EndInitializationEntityCommandBufferSystem>();
+            ecbSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
         [BurstCompile]
@@ -309,7 +309,7 @@ namespace VoxelTerrain.ECS.Systems
             WithReadOnly(allChunks).
             WithBurst().
             ForEach((int entityInQueryIndex, Entity e, in ChunkParent chunkParent) => {
-                if (math.distance(chunkParent.gridPosition, camGridPosition) > radius || chunkCount > 5) {return;}
+                if (math.distance(chunkParent.gridPosition, camGridPosition) > radius || chunkCount > 4) {return;}
 
                 for (int y = -1; y <= 1; y++) {
                     for (int x = -1; x <= 1; x++) {
@@ -367,7 +367,8 @@ namespace VoxelTerrain.ECS.Systems
             WithNone<VoxelTerrainChunkInitializedTag>().WithAll<VoxelTerrainChunkNewTag>().
             WithBurst().
             ForEach((int entityInQueryIndex, Entity e, in ChunkComponent terrainChunk) => {
-                if (math.distance(terrainChunk.gridPosition, camGridPosition) > radius || chunkComponentCount > 15) {return;}
+                if (math.distance(terrainChunk.gridPosition, camGridPosition) > radius /*|| chunkComponentCount > 4*/) {return;}
+                
                 for (int y = 0; y < terrainChunk.grid.chunkSize; y++) {
                     for (int x = 0; x < terrainChunk.grid.chunkSize; x++) {
                         VoxelComponent voxel = new VoxelComponent() {
@@ -393,7 +394,7 @@ namespace VoxelTerrain.ECS.Systems
 
     //[DisableAutoCreation]
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public partial class SetVoxelTerrainDataSystem : SystemBase {
         protected World defaultWorld;
         protected EntityManager entityManager;
