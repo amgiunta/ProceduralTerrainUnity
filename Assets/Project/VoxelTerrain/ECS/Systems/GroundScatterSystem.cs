@@ -80,15 +80,19 @@ namespace VoxelTerrain.ECS.Systems {
             int2 camGridPos = WorldToGridSpace(cam.transform.position, TerrainManager.instance.terrainSettings.grid);
             float3 camPos = cam.transform.position;
 
-            foreach (var prefab in prefabs) {
-                var ecb = ecbSystem.CreateCommandBuffer().AsParallelWriter();
+            var localPrefabs = new NativeArray<Entity>(prefabs, Allocator.TempJob);
 
-                Entities.
-                WithAll<ChunkComponent, VoxelTerrainChunkRenderTag>().
-                WithNone<Prefab, VoxelTerrainGroundScatterGeneratedTag>().
-                WithBurst().
-                ForEach((int entityInQueryIndex, Entity e, in ChunkComponent chunkComponent, in Parent parentEntity) => {
-                    if (math.distance(chunkComponent.gridPosition, camGridPos) > radius) {return;}
+            var ecb = ecbSystem.CreateCommandBuffer().AsParallelWriter();
+
+            Entities.
+            WithAll<ChunkComponent, VoxelTerrainChunkRenderTag>().
+            WithNone<Prefab, VoxelTerrainGroundScatterGeneratedTag>().
+            WithReadOnly(localPrefabs).
+            WithDisposeOnCompletion(localPrefabs).
+            WithBurst().
+            ForEach((int entityInQueryIndex, Entity e, in ChunkComponent chunkComponent, in Parent parentEntity) => {
+                if (math.distance(chunkComponent.gridPosition, camGridPos) > radius) {return;}
+                foreach (var prefab in localPrefabs) {
                     GroundScatter prefabScatter = GetComponent<GroundScatter>(prefab);
                     prefabScatter.ChunkEntity = e;
                     prefabScatter.chunk = chunkComponent;
@@ -104,10 +108,10 @@ namespace VoxelTerrain.ECS.Systems {
                         ecb.SetComponent<GroundScatter>(entityInQueryIndex, entity, prefabScatter);
                         count++;
                     }
+                }
 
-                    ecb.AddComponent<VoxelTerrainGroundScatterGeneratedTag>(entityInQueryIndex, e);
-                }).ScheduleParallel();
-            }
+                ecb.AddComponent<VoxelTerrainGroundScatterGeneratedTag>(entityInQueryIndex, e);
+            }).ScheduleParallel();
 
             ecbSystem.AddJobHandleForProducer(Dependency);
         }

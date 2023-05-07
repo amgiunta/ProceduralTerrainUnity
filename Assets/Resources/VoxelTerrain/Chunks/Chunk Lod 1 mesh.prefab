@@ -113,6 +113,7 @@ GameObject:
   - component: {fileID: 2960325887113351627}
   - component: {fileID: 7572662547514284513}
   - component: {fileID: 1795266510772219977}
+  - component: {fileID: 7251009173445875673}
   m_Layer: 6
   m_Name: Chunk Lod 1 mesh
   m_TagString: Untagged
@@ -185,3 +186,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ConversionMode: 0
+--- !u!114 &7251009173445875673
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6349437061141563636}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ecc3a20853306e84fbcd0b15a2c7fb35, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

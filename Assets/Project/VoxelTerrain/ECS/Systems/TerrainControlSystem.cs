@@ -132,17 +132,17 @@ namespace VoxelTerrain.ECS.Systems
     }
 
     [BurstCompile]
-    [AlwaysUpdateSystem]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateBefore(typeof(SpawnVoxelTerrainChunkSystemV2))]
+    [UpdateInGroup(typeof(InitializationSystemGroup))]
     public partial class EnableDisableVoxelTerrainSystem : SystemBase {
         protected World defaultWorld;
         protected EntityManager entityManager;
-        protected EndSimulationEntityCommandBufferSystem ecbSystem;
+        protected EndInitializationEntityCommandBufferSystem ecbSystem;
 
         private Camera cam;
 
-        private int2 WorldToGridSpace(Vector3 position, Grid grid)
+        private int lastExecution;
+
+        public static int2 WorldToGridSpace(float3 position, Grid grid)
         {
             int vx = (int) math.floor(position.x * grid.voxelSize);
             int vy = (int) math.floor(position.z * grid.voxelSize);
@@ -157,7 +157,7 @@ namespace VoxelTerrain.ECS.Systems
         {
             defaultWorld = World.DefaultGameObjectInjectionWorld;
             entityManager = defaultWorld.EntityManager;
-            ecbSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            ecbSystem = World.GetOrCreateSystem<EndInitializationEntityCommandBufferSystem>();
         }
 
         [BurstCompile]
@@ -168,6 +168,13 @@ namespace VoxelTerrain.ECS.Systems
 
         [BurstCompile]
         protected override void OnUpdate() {
+            if (lastExecution < 400) {
+                lastExecution++;
+                return;
+            }
+
+            lastExecution = 0;
+
             float radius = TerrainManager.instance.terrainSettings.renderDistance;
             EntityQuery allChunkPrefabsQuery = GetEntityQuery(
                 new EntityQueryDesc{
@@ -187,18 +194,20 @@ namespace VoxelTerrain.ECS.Systems
             var ecb = ecbSystem.CreateCommandBuffer().AsParallelWriter();
 
             Entities.
-            WithAll<ChunkComponent, VoxelTerrainChunkRenderTag>().
+            WithAll<VoxelTerrainAutoDisableTag>().
             WithNone<Disabled>().
-            ForEach((int entityInQueryIndex, Entity e, in ChunkComponent chunk) => {
-                if (math.distance(camGridPosition, chunk.gridPosition) <= radius) {return;}
+            ForEach((int entityInQueryIndex, Entity e, in Translation translation) => {
+                var gridPosition = WorldToGridSpace(translation.Value, prefabChunkComponent.grid);
+                if (math.distance(camGridPosition, gridPosition) <= radius) {return;}
 
                 ecb.AddComponent<Disabled>(entityInQueryIndex, e);
             }).ScheduleParallel();
 
             Entities.
-            WithAll<ChunkComponent, VoxelTerrainChunkRenderTag, Disabled>().
-            ForEach((int entityInQueryIndex, Entity e, in ChunkComponent chunk) => {
-                if (math.distance(camGridPosition, chunk.gridPosition) > radius) {return;}
+            WithAll<VoxelTerrainAutoDisableTag>().
+            ForEach((int entityInQueryIndex, Entity e, in Translation translation) => {
+                var gridPosition = WorldToGridSpace(translation.Value, prefabChunkComponent.grid);
+                if (math.distance(camGridPosition, gridPosition) > radius) {return;}
 
                 ecb.RemoveComponent<Disabled>(entityInQueryIndex, e);
             }).ScheduleParallel();
@@ -220,6 +229,8 @@ namespace VoxelTerrain.ECS.Systems
 
         private Camera cam;
 
+        private int lastExecution = 10;
+
         private int2 WorldToGridSpace(Vector3 position, Grid grid)
         {
             int vx = (int) math.floor(position.x * grid.voxelSize);
@@ -246,6 +257,13 @@ namespace VoxelTerrain.ECS.Systems
 
         [BurstCompile]
         protected override void OnUpdate() {
+            if (lastExecution < 2) {
+                lastExecution++;
+                return;
+            }
+
+            lastExecution = 0;
+
             EntityQuery allChunkPrefabsQuery = GetEntityQuery(
                 new EntityQueryDesc{
                     All = new ComponentType[] {typeof(Prefab), typeof(ChunkParent)}
@@ -359,7 +377,8 @@ namespace VoxelTerrain.ECS.Systems
             var ecb2 = ecbSystem.CreateCommandBuffer().AsParallelWriter();
             EntityArchetype voxelArchetype = EntityManager.CreateArchetype(
                 typeof(VoxelComponent),
-                typeof(VoxelTerrainVoxelInitializedTag)
+                typeof(VoxelTerrainVoxelInitializedTag),
+                typeof(VoxelTerrainAutoDisableTag)
             );
 
             int chunkComponentCount = 0;
